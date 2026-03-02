@@ -1,0 +1,74 @@
+#pragma once
+#include "IVisionSystem.h"
+
+// 模拟视觉系统（用于测试流程逻辑）
+// 返回预设的模拟坐标，无需真实硬件即可测试流程
+
+class CMockVisionSystem : public IVisionSystem
+{
+public:
+	CMockVisionSystem();
+	virtual ~CMockVisionSystem();
+	
+	// ========== 实现 IVisionSystem 接口 ==========
+	
+	// 粗定位：识别模型目标
+	virtual BOOL DetectModel(float& x, float& y, float& z) override;
+	
+	// 精定位：识别穿刺点
+	virtual BOOL DetectPuncturePoint(float& x, float& y, float& z) override;
+	
+	// 获取穿刺角度
+	virtual float GetPunctureAngle(float camX, float camY, float camZ) override;
+	
+	// 坐标转换（相机坐标系 → 机械臂坐标系）
+	virtual void TransformCoordinate(
+		float camX, float camY, float camZ,
+		float& robotX, float& robotY, float& robotZ) override;
+	
+	// 系统状态查询
+	virtual BOOL IsConnected() override { return m_bConnected; }
+	virtual BOOL IsCalibrated() override { return m_bCalibrated; }
+
+	// ========== Step4：IR像素检测（模拟实现） ==========
+	virtual BOOL DetectLaserSpotPixelIR(int& u, int& v) override;
+	virtual BOOL DetectPuncturePointPixelIR(int& u, int& v) override;
+	
+	// ========== 测试辅助函数 ==========
+	
+	// 设置模拟的模型坐标（用于测试）
+	void SetMockModelPosition(float x, float y, float z);
+	
+	// 设置模拟的穿刺点坐标（用于测试）
+	void SetMockPuncturePoint(float x, float y, float z);
+	
+	// 设置模拟的穿刺角度（用于测试）
+	void SetMockPunctureAngle(float angle);
+	
+	// 设置连接状态（用于测试）
+	void SetConnected(BOOL bConnected) { m_bConnected = bConnected; }
+	
+	// 设置标定状态（用于测试）
+	void SetCalibrated(BOOL bCalibrated) { m_bCalibrated = bCalibrated; }
+
+	// 设置模拟IR像素（用于XY闭环测试）
+	void SetMockLaserSpotPixel(int u, int v);
+	void SetMockPuncturePixel(int u, int v);
+	
+private:
+	// 模拟数据
+	float m_fModelX, m_fModelY, m_fModelZ;           // 模拟的模型位置
+	float m_fPunctureX, m_fPunctureY, m_fPunctureZ; // 模拟的穿刺点位置
+	float m_fPunctureAngle;                          // 模拟的穿刺角度
+	
+	// 状态
+	BOOL m_bConnected;      // 模拟连接状态
+	BOOL m_bCalibrated;     // 模拟标定状态
+	
+	// 简单的坐标转换矩阵（4x4单位矩阵 + 平移）
+	float m_transformMatrix[16];
+
+	// Step4：模拟IR像素坐标
+	int m_uLaser, m_vLaser;
+	int m_uPuncture, m_vPuncture;
+};

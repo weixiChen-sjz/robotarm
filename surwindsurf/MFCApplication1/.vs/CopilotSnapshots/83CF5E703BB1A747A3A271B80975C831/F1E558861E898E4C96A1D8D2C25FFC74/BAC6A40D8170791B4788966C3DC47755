@@ -1,0 +1,1191 @@
+﻿# 医疗穿刺机器人系统集成方案（最终版）
+
+**版本**：v2.0  
+**日期**：2024年  
+**项目**：硬件设备控制系统（MFCApplication1）  
+**工作目录**：`E:\mywork\Users\cwx\source\repos\MFCApplication1\`
+
+---
+
+## 📋 目录
+
+1. [系统总体架构](#一系统总体架构)
+2. [硬件接口说明](#二硬件接口说明)
+3. [分步执行计划（7步）](#三分步执行计划7步)
+4. [核心类设计](#四核心类设计)
+5. [文件结构规划](#五文件结构规划)
+6. [开发优先级](#六开发优先级)
+7. [测试策略](#七测试策略)
+8. [附录：技术要点](#八附录技术要点)
+
+---
+
+## 一、系统总体架构
+
+### 1.1 架构图
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                    MFC 主控程序                                │
+│                  (CMFCApplication1Dlg)                         │
+├───────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌─────────┐ │
+│  │视觉接口层  │  │机械臂控制  │  │电机控制    │  │I/O控制  │ │
+│  │IVisionSys  │  │CRobotArm   │  │CSerialPort │  │CIOCtrl  │ │
+│  │(预留)      │  │(TCP/IP)    │  │(RS-232)    │  │(GPIO)   │ │
+│  └────────────┘  └────────────┘  └────────────┘  └─────────┘ │
+│         ↓                ↓              ↓              ↓       │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌─────────┐ │
+│  │坐标转换    │  │            │  │            │  │激光测距 │ │
+│  │Converter   │  │            │  │            │  │(RS-485) │ │
+│  └────────────┘  │            │  │            │  └─────────┘ │
+│         ↓         │            │  │            │       ↓      │
+│  ┌────────────┐  │            │  │            │  ┌─────────┐ │
+│  │流程控制器  │←─┴────────────┴──┴────────────┴─→│日志管理 │ │
+│  │Procedure   │                                   │LogMgr   │ │
+│  │Controller  │                                   └─────────┘ │
+│  └────────────┘                                                │
+└───────────────────────────────────────────────────────────────┘
+       ↓              ↓              ↓              ↓
+  ┌────────┐    ┌────────┐    ┌────────┐    ┌────────┐
+  │RealSense│   │6轴机械 │    │进针电机│    │I/O设备 │
+  │相机+   │    │臂      │    │        │    │+激光   │
+  │激光投影│    │        │    │        │    │测距仪  │
+  └────────┘    └────────┘    └────────┘    └────────┘
+```
+
+### 1.2 数据流向
+
+```
+视觉系统 ──(x,y,z)──> 坐标转换 ──(x',y',z')──> 机械臂 ──(TCP/IP)──> 移动
+                                                    ↓
+激光测距仪 ←─(485)─── I/O电源 ←───── 流程控制器 ──→ 电机 ──(232)──> 穿刺
+                                                    ↓
+                                              消毒液/输液开关
+```
+
+---
+
+## 二、硬件接口说明
+
+### 2.1 接口职责分工表
+
+| 接口类型 | 硬件设备 | 通信协议 | 控制对象 | 使用步骤 | 当前状态 |
+|---------|---------|---------|---------|---------|---------|
+| **TCP/IP** | 6轴机械臂 | 自定义文本协议 | XYZ位置、姿态角θ | 1, 2, 3, 4 | ✅ 已实现 |
+| **RS-232** | 进针电机 | 自定义文本协议 | 穿刺深度、速度 | 6 | ✅ 已实现（可发送指令） |
+| **RS-485** | 激光测距仪 | Modbus RTU | 距离测量 | 2, 4 | ✅ 已实现（含数据解析） |
+| **GPIO** | I/O控制器 | 数字I/O | 开关控制 | 2, 4, 5, 7 | ✅ 已实现 |
+| **视觉系统** | RealSense相机 | SDK接口 | 目标识别、坐标获取 | 1, 3, 4 | ⏳ 预留接口 |
+
+### 2.2 详细功能说明
+
+#### **TCP/IP - 机械臂控制**
+- **IP地址**：手动输入（无默认值）
+- **端口号**：手动输入
+- **连接超时**：2秒
+- **指令格式**：
+```
+MOVE x,y,z,θ,speed\r\n
+HOME\r\n
+STOP\r\n
+```
+- **响应格式**：`OK\r\n` 或 `ERROR\r\n`
+
+**实现文件**：
+- `RobotArmController.h` / `RobotArmController.cpp`
+
+#### **RS-232 - 电机控制**
+- **波特率**：115200（推荐）/ 可配置
+- **数据位**：8
+- **停止位**：1
+- **校验位**：无
+- **指令格式**：
+```
+MOVE 深度值\r\n          // 例如: MOVE 50.5
+STOP\r\n
+QUERY\r\n               // 查询状态
+```
+- **响应格式**：
+```
+OK\r\n                  // 指令接受
+ARRIVED\r\n             // 到达目标位置
+POSITION 当前位置\r\n    // 位置反馈
+ERROR 错误代码\r\n       // 错误信息
+```
+
+**实现文件**：
+- `SerialPort.h` / `SerialPort.cpp`
+
+#### **RS-485 - 激光测距仪**
+
+**重要说明**：激光测距仪需要通过GPIO控制电源开关，通电后通过485串口通信。
+
+- **波特率**：9600
+- **数据位**：8
+- **停止位**：1
+- **校验位**：无
+- **协议**：Modbus RTU
+
+**通信流程**：
+```
+1. GPIO控制：打开激光测距仪电源（PIN 8）
+2. 等待稳定：延时500ms
+3. 485发送：查询指令 01 04 00 18 00 02 F1 CC
+4. 485接收：响应数据 01 04 04 [高字节] [低字节] [CRC高] [CRC低]
+5. 数据解析：距离值 = (高字节 << 8) | 低字节（单位：0.01mm）
+6. GPIO控制：关闭激光测距仪电源（节能/避免干扰）
+```
+
+**指令详解**：
+```
+查询指令（8字节）：
+  01       - 从机地址
+  04       - 功能码（读保持寄存器）
+  00 18    - 起始寄存器地址（0x0018 = 24）
+  00 02    - 读取寄存器数量（2个）
+  F1 CC    - CRC16校验码
+
+响应格式（9字节）：
+  01       - 从机地址
+  04       - 功能码
+  04       - 数据字节数（4字节）
+  XX XX    - 距离值高字节、低字节
+  00 00    - 保留字节
+  XX XX    - CRC16校验码
+```
+
+**距离值计算**：
+```cpp
+// 示例：接收数据 01 04 04 27 10 00 00 XX XX
+// 距离高字节 = 0x27 (39)
+// 距离低字节 = 0x10 (16)
+// 距离原始值 = (39 << 8) | 16 = 10000
+// 实际距离 = 10000 * 0.01mm = 100.00mm
+```
+
+**测量范围**：-80mm ~ +80mm  
+**精度要求**：
+  - 步骤2（粗调）：±2mm
+  - 步骤4（精调）：±0.2mm
+
+**实现文件**：
+- `SerialPort.h` / `SerialPort.cpp`（含 `ParseLaserDistance()` 方法）
+
+**代码示例**：
+```cpp
+// 读取激光距离的辅助方法
+float ProcedureController::ReadLaserDistance() {
+    // 1. 准备查询指令（Modbus RTU）
+    BYTE cmd[] = {0x01, 0x04, 0x00, 0x18, 0x00, 0x02, 0xF1, 0xCC};
+    
+    // 2. 发送指令到485串口
+    if (!m_laserSerial.SendData((char*)cmd, sizeof(cmd))) {
+        LogError("发送激光查询指令失败");
+        return -1.0f;
+    }
+    
+    // 3. 等待响应（最多500ms）
+    Sleep(100);  // 给设备处理时间
+    
+    char buffer[256];
+    DWORD bytesRead = 0;
+    
+    DWORD startTime = GetTickCount();
+    while (GetTickCount() - startTime < 500) {
+        if (m_laserSerial.ReceiveData(buffer, sizeof(buffer), bytesRead)) {
+            if (bytesRead >= 9) {  // 完整响应至少9字节
+                // 4. 解析距离数据（调用SerialPort中的静态方法）
+                float distance = 0.0f;
+                if (CSerialPort::ParseLaserDistance(buffer, bytesRead, distance)) {
+                    LogInfo("激光测距成功: %.2fmm", distance);
+                    return distance;
+                }
+            }
+        }
+        Sleep(10);
+    }
+    
+    LogError("激光测距超时");
+    return -1.0f;
+}
+```
+
+**已实现的解析方法**（在 `SerialPort.cpp` 中）
+```cpp
+// 该方法已在您的代码中实现
+BOOL CSerialPort::ParseLaserDistance(const char* pData, DWORD dwSize, float& fDistance)
+{
+    // 检查数据长度（至少9字节）
+    if (dwSize < 9) return FALSE;
+    
+    // 检查帧头
+    if ((BYTE)pData[0] != 0x01 || (BYTE)pData[1] != 0x04) return FALSE;
+    
+    // 提取距离数据（字节4和5）
+    BYTE highByte = (BYTE)pData[3];
+    BYTE lowByte = (BYTE)pData[4];
+    
+    // 计算距离值（单位：0.01mm）
+    int rawValue = (highByte << 8) | lowByte;
+    fDistance = rawValue * 0.01f;  // 转换为mm
+    
+    return TRUE;
+}
+```
+
+---
+
+## 三、分步执行计划（7步）
+
+### 步骤概览
+
+| 步骤 | 名称 | 主要硬件 | 精度要求 | 预计耗时 |
+|-----|------|---------|---------|---------|
+| 1 | 视觉定位（粗定位） | 相机 + 机械臂 | ±5mm | 3-5秒 |
+| 2 | 激光粗调高度 | 激光测距 + 机械臂 | ±2mm | 2-3秒 |
+| 3 | 姿态调整与穿刺点识别 | 相机 + 机械臂 | 角度±2° | 2-3秒 |
+| 4 | 激光精准对位 | 激光测距 + 机械臂 | ±0.2mm | 3-5秒 |
+| 5 | 消毒准备 | I/O控制 | - | 2秒 |
+| 6 | 穿刺执行 | 电机（232） | ±0.5mm | 根据深度 |
+| 7 | 输液启动 | I/O控制 | - | 瞬时 |
+
+---
+
+### 步骤1：视觉定位（粗定位）⭐ 预留接口
+
+**目标**：识别硅胶模型位置，移动机械臂到目标区域上方
+
+#### 工作流程
+```
+RealSense相机 → YOLO识别 → 获取模型坐标(x,y,z) → 坐标系转换 → 机械臂移动
+```
+
+#### 代码框架（预留）
+```cpp
+bool ProcedureController::Step1_VisionLocate() {
+    LogInfo("步骤1：视觉定位开始");
+    
+    // 1. 调用视觉系统获取目标坐标（预留接口）
+    if (!m_vision || !m_vision->IsReady()) {
+        LogError("视觉系统未就绪");
+        return false;
+    }
+    
+    VisionCoordinate visionCoord = m_vision->GetModelPosition();
+    LogInfo("视觉坐标: X=%.2f, Y=%.2f, Z=%.2f", 
+            visionCoord.X, visionCoord.Y, visionCoord.Z);
+    
+    // 2. 坐标系转换（相机坐标 → 机械臂基坐标）
+    RobotArmPosition robotPos = CoordinateConverter::VisionToRobot(visionCoord);
+    LogInfo("转换后坐标: X=%.2f, Y=%.2f, Z=%.2f", 
+            robotPos.X, robotPos.Y, robotPos.Z);
+    
+    // 3. 机械臂移动到粗定位（高于目标10cm，防止碰撞）
+    robotPos.Z += 100.0;  // 高于目标100mm
+    
+    if (!m_robot.MoveTo(robotPos, 50)) {  // 中速移动
+        LogError("机械臂移动失败");
+        return false;
+    }
+    
+    LogInfo("步骤1：视觉定位完成");
+    return true;
+}
+```
+
+---
+
+### 步骤2：激光粗调高度（闭环控制）
+
+**目标**：调整机械臂Z轴高度到距离目标表面 100mm ±2mm
+
+#### 工作流程
+```
+打开激光电源 → 读取距离 → 计算误差 → 调整Z轴 → 循环至误差≤2mm → 关闭激光
+```
+
+#### 代码实现
+```cpp
+bool ProcedureController::Step2_LaserCoarseAdjust() {
+    LogInfo("步骤2：激光粗调高度开始");
+    
+    const float TARGET_DISTANCE = 100.0f;  // 目标距离 100mm
+    const float TOLERANCE = 2.0f;          // 允许误差 ±2mm
+    const int MAX_ITERATIONS = 20;         // 最大调整次数
+    const float DAMPING = 0.8f;            // 阻尼系数（防止震荡）
+    
+    // 1. 打开激光测距仪电源
+    if (!m_ioCtrl.OpenLaserSwitch()) {
+        LogError("打开激光测距仪失败");
+        return false;
+    }
+    Sleep(500);  // 等待激光稳定
+    
+    // 2. 闭环调整
+    for (int i = 0; i < MAX_ITERATIONS; i++) {
+        // 读取当前距离
+        float currentDistance = ReadLaserDistance();
+        if (currentDistance < 0) {
+            LogError("读取激光距离失败");
+            m_ioCtrl.CloseLaserSwitch();
+            return false;
+        }
+        
+        // 计算误差
+        float error = currentDistance - TARGET_DISTANCE;
+        
+        LogInfo("迭代%d: 当前距离=%.2fmm, 目标=%.2fmm, 误差=%.2fmm", 
+                i+1, currentDistance, TARGET_DISTANCE, error);
+        
+        // 判断是否达到精度
+        if (fabs(error) <= TOLERANCE) {
+            LogInfo("高度调整完成，误差=%.2fmm", error);
+            break;
+        }
+        
+        // 计算Z轴调整量（带阻尼）
+        float zAdjust = -error * DAMPING;  // 负号：距离大→下移
+        
+        // 获取当前位置并调整Z轴
+        RobotArmPosition currentPos = m_robot.GetCurrentPosition();
+        currentPos.Z += zAdjust;
+        
+        // 移动机械臂
+        if (!m_robot.MoveTo(currentPos, 30)) {  // 低速移动
+            LogError("机械臂Z轴调整失败");
+            m_ioCtrl.CloseLaserSwitch();
+            return false;
+        }
+        
+        Sleep(200);  // 等待稳定
+    }
+    
+    // 3. 关闭激光（节省电力，避免干扰后续视觉识别）
+    m_ioCtrl.CloseLaserSwitch();
+    
+    LogInfo("步骤2：激光粗调高度完成");
+    return true;
+}
+```
+
+---
+
+### 步骤3：姿态调整与穿刺点识别⭐ 预留接口
+
+**目标**：旋转机械臂找到最佳穿刺角度，识别精确穿刺点
+
+#### 工作流程
+```
+视觉识别穿刺点 → 计算旋转角度θ → 机械臂旋转调姿 → 视觉确认
+```
+
+#### 代码框架（预留）
+```cpp
+bool ProcedureController::Step3_PostureAdjust() {
+    LogInfo("步骤3：姿态调整开始");
+    
+    // 1. 视觉识别穿刺点
+    if (!m_vision || !m_vision->IsReady()) {
+        LogError("视觉系统未就绪");
+        return false;
+    }
+    
+    PuncturePoint target = m_vision->GetPunctureTarget();
+    LogInfo("穿刺点: X=%.2f, Y=%.2f, 角度=%.2f°", 
+            target.X, target.Y, target.Angle);
+    
+    // 2. 调整XY位置和旋转角度
+    RobotArmPosition currentPos = m_robot.GetCurrentPosition();
+    currentPos.X += target.X;  // 相对偏移
+    currentPos.Y += target.Y;
+    // currentPos.Theta = target.Angle;  // 需要扩展RobotArmPosition支持θ
+    
+    if (!m_robot.MoveTo(currentPos, 40)) {
+        LogError("机械臂姿态调整失败");
+        return false;
+    }
+    
+    LogInfo("步骤3：姿态调整完成");
+    return true;
+}
+```
+
+---
+
+### 步骤4：激光精准对位（高精度闭环）
+
+**目标**：激光点与穿刺点重合，高度精度 ±0.2mm
+
+#### 工作流程
+```
+打开激光 → 视觉检测激光点偏差 → 微调XY和Z → 循环至偏差≤0.2mm
+```
+
+#### 代码实现
+```cpp
+bool ProcedureController::Step4_PrecisionAlign() {
+    LogInfo("步骤4：精准对位开始");
+    
+    const float PRECISION = 0.2f;          // 高精度 ±0.2mm
+    const int MAX_ITERATIONS = 30;
+    const float DAMPING = 0.5f;            // 更小的阻尼系数
+    
+    // 1. 打开激光
+    if (!m_ioCtrl.OpenLaserSwitch()) {
+        LogError("打开激光失败");
+        return false;
+    }
+    Sleep(300);
+    
+    // 2. 高精度闭环调整
+    for (int i = 0; i < MAX_ITERATIONS; i++) {
+        // 读取激光距离（Z轴高度）
+        float height = ReadLaserDistance();
+        if (height < 0) {
+            LogError("读取激光距离失败");
+            m_ioCtrl.CloseLaserSwitch();
+            return false;
+        }
+        
+        float heightError = 100.0f - height;  // 目标100mm
+        
+        // 视觉检测激光点与目标点的XY偏差（预留）
+        PointOffset xyOffset = {0, 0};
+        if (m_vision && m_vision->IsReady()) {
+            xyOffset = m_vision->GetLaserPointOffset();
+        }
+        
+        LogInfo("迭代%d: 高度误差=%.3fmm, X偏差=%.3fmm, Y偏差=%.3fmm", 
+                i+1, heightError, xyOffset.X, xyOffset.Y);
+        
+        // 判断是否达到精度
+        if (fabs(heightError) <= PRECISION && 
+            fabs(xyOffset.X) <= PRECISION && 
+            fabs(xyOffset.Y) <= PRECISION) {
+            LogInfo("精准对位完成");
+            break;
+        }
+        
+        // 计算微调量
+        RobotArmPosition currentPos = m_robot.GetCurrentPosition();
+        currentPos.X += xyOffset.X * DAMPING;
+        currentPos.Y += xyOffset.Y * DAMPING;
+        currentPos.Z -= heightError * DAMPING;
+        
+        // 微调移动
+        if (!m_robot.MoveTo(currentPos, 10)) {  // 极低速
+            LogError("微调失败");
+            m_ioCtrl.CloseLaserSwitch();
+            return false;
+        }
+        
+        Sleep(300);  // 等待稳定
+    }
+    
+    LogInfo("步骤4：精准对位完成");
+    return true;
+}
+```
+
+---
+
+### 步骤5：消毒准备
+
+**目标**：喷洒消毒液 2秒，等待干燥
+
+#### 代码实现
+```cpp
+bool ProcedureController::Step5_Disinfect() {
+    LogInfo("步骤5：消毒准备开始");
+    
+    // 1. 打开消毒液阀门
+    if (!m_ioCtrl.OpenDisinfectSwitch()) {
+        LogError("打开消毒液开关失败");
+        return false;
+    }
+    
+    // 2. 喷洒2秒
+    LogInfo("喷洒消毒液中...");
+    Sleep(2000);  // 2秒
+    
+    // 3. 关闭阀门
+    if (!m_ioCtrl.CloseDisinfectSwitch()) {
+        LogError("关闭消毒液开关失败");
+        return false;
+    }
+    
+    // 4. 等待干燥
+    LogInfo("等待消毒液干燥...");
+    Sleep(500);   // 0.5秒
+    
+    LogInfo("步骤5：消毒准备完成");
+    return true;
+}
+```
+
+---
+
+### 步骤6：穿刺执行⭐ 232电机控制
+
+**目标**：通过232串口控制电机完成进针动作
+
+#### 工作流程
+```
+计算穿刺深度 → 232发送电机指令 → 监听到位信号 → 确认完成
+```
+
+#### 代码实现
+```cpp
+bool ProcedureController::Step6_Puncture() {
+    LogInfo("步骤6：穿刺执行开始");
+    
+    // 1. 获取穿刺深度参数（可从UI或配置读取）
+    float punctureDepth = 50.0f;  // 示例：50mm
+    
+    LogInfo("目标穿刺深度: %.2fmm", punctureDepth);
+    
+    // 2. 发送电机移动指令
+    CString strCmd;
+    strCmd.Format("MOVE %.2f\r\n", punctureDepth);
+    
+    if (!SendMotorCommand(strCmd)) {
+        LogError("发送电机指令失败");
+        return false;
+    }
+    
+    // 3. 等待电机到位信号
+    if (!WaitForMotorArrival(10000)) {  // 10秒超时
+        LogError("电机到位超时");
+        // 发送停止指令
+        SendMotorCommand("STOP\r\n");
+        return false;
+    }
+    
+    LogInfo("步骤6：穿刺执行完成，深度=%.2fmm", punctureDepth);
+    return true;
+}
+
+// 发送232电机指令
+bool ProcedureController::SendMotorCommand(const CString& cmd) {
+    if (!m_motorSerial.IsOpen()) {
+        LogError("232串口未打开");
+        return false;
+    }
+    
+    CStringA cmdA(cmd);
+    BOOL result = m_motorSerial.SendData(cmdA.GetString(), 
+                                         cmdA.GetLength(), 
+                                         TRUE);  // 自动添加终止符
+    
+    if (result) {
+        LogInfo("发送电机指令: %s", (LPCTSTR)cmd.Left(cmd.GetLength()-2));
+    } else {
+        LogError("电机指令发送失败");
+    }
+    
+    return result == TRUE;
+}
+
+// 等待电机到位信号
+bool ProcedureController::WaitForMotorArrival(DWORD timeout) {
+    DWORD startTime = GetTickCount();
+    char buffer[256];
+    DWORD bytesRead = 0;
+    
+    LogInfo("等待电机到位信号...");
+    
+    while (GetTickCount() - startTime < timeout) {
+        // 读取232串口数据
+        if (m_motorSerial.ReceiveData(buffer, sizeof(buffer)-1, bytesRead)) {
+            if (bytesRead > 0) {
+                buffer[bytesRead] = '\0';
+                CString response(buffer);
+                
+                LogInfo("电机响应: %s", (LPCTSTR)response);
+                
+                // 检查响应
+                if (response.Find(_T("ARRIVED")) >= 0) {
+                    LogInfo("电机已到达目标位置");
+                    return true;
+                }
+                
+                if (response.Find(_T("ERROR")) >= 0) {
+                    LogError("电机报错: %s", (LPCTSTR)response);
+                    return false;
+                }
+            }
+        }
+        
+        Sleep(50);  // 50ms轮询间隔
+    }
+    
+    LogError("等待电机到位超时");
+    return false;
+}
+```
+
+---
+
+### 步骤7：输液启动
+
+**目标**：打开输液阀门，开始输液
+
+#### 代码实现
+```cpp
+bool ProcedureController::Step7_StartInfusion() {
+    LogInfo("步骤7：输液启动");
+    
+    // 打开输液阀门
+    if (!m_ioCtrl.OpenInfusionSwitch()) {
+        LogError("打开输液开关失败");
+        return false;
+    }
+    
+    LogInfo("输液已启动，流程完成");
+    return true;
+}
+```
+
+---
+
+## 四、核心类设计
+
+### 4.1 流程控制器类
+
+```cpp
+// ProcedureController.h
+#pragma once
+#include "RobotArmController.h"
+#include "SerialPort.h"
+#include "IOController.h"
+#include "IVisionSystem.h"
+#include "CoordinateConverter.h"
+#include "LogManager.h"
+
+class ProcedureController {
+public:
+    ProcedureController(
+        CRobotArmController& robot,     // TCP/IP 机械臂
+        CSerialPort& motorSerial,       // RS-232 电机
+        CSerialPort& laserSerial,       // RS-485 激光测距仪
+        CIOController& ioCtrl,          // GPIO I/O
+        IVisionSystem* vision = nullptr // 视觉系统（预留，可为null）
+    );
+    
+    ~ProcedureController();
+    
+    // 执行完整流程（7步）
+    bool ExecuteFullProcedure();
+    
+    // 单步执行（用于测试）
+    bool ExecuteStep(int stepNumber);
+    
+    // 停止流程
+    void StopProcedure();
+    
+    // 获取当前执行状态
+    int GetCurrentStep() const { return m_currentStep; }
+    bool IsRunning() const { return m_isRunning; }
+    
+private:
+    // ===== 7个步骤方法 =====
+    bool Step1_VisionLocate();         // 视觉定位
+    bool Step2_LaserCoarseAdjust();    // 激光粗调
+    bool Step3_PostureAdjust();        // 姿态调整
+    bool Step4_PrecisionAlign();       // 精准对位
+    bool Step5_Disinfect();            // 消毒
+    bool Step6_Puncture();             // 穿刺
+    bool Step7_StartInfusion();        // 输液
+    
+    // ===== 辅助方法 =====
+    float ReadLaserDistance();                      // 读485激光数据
+    bool SendMotorCommand(const CString& cmd);      // 发232电机指令
+    bool WaitForMotorArrival(DWORD timeout);        // 等232电机到位
+    
+    // ===== 成员变量 =====
+    CRobotArmController& m_robot;      // 机械臂
+    CSerialPort& m_motorSerial;        // 电机串口
+    CSerialPort& m_laserSerial;        // 激光串口
+    CIOController& m_ioCtrl;           // I/O控制
+    IVisionSystem* m_vision;           // 视觉系统
+    
+    int m_currentStep;                 // 当前步骤
+    bool m_isRunning;                  // 运行标志
+    HANDLE m_stopEvent;                // 停止事件
+};
+```
+
+### 4.2 视觉系统接口（预留）
+
+```cpp
+// IVisionSystem.h
+#pragma once
+
+// 视觉坐标（相机坐标系）
+struct VisionCoordinate {
+    double X, Y, Z;
+    VisionCoordinate() : X(0), Y(0), Z(0) {}
+    VisionCoordinate(double x, double y, double z) : X(x), Y(y), Z(z) {}
+};
+
+// 穿刺点
+struct PuncturePoint {
+    double X, Y;          // 相对于当前位置的偏移
+    double Angle;         // 穿刺角度
+    PuncturePoint() : X(0), Y(0), Angle(0) {}
+};
+
+// 激光点偏移
+struct PointOffset {
+    double X, Y;
+    PointOffset() : X(0), Y(0) {}
+    bool IsWithinTolerance(double tolerance) const {
+        return fabs(X) <= tolerance && fabs(Y) <= tolerance;
+    }
+};
+
+// 视觉系统接口
+class IVisionSystem {
+public:
+    virtual ~IVisionSystem() {}
+    
+    // 初始化/释放
+    virtual bool Initialize() = 0;
+    virtual void Release() = 0;
+    
+    // 检查就绪状态
+    virtual bool IsReady() = 0;
+    
+    // 获取目标模型位置（步骤1）
+    virtual VisionCoordinate GetModelPosition() = 0;
+    
+    // 获取穿刺点位置（步骤3）
+    virtual PuncturePoint GetPunctureTarget() = 0;
+    
+    // 获取激光点偏移（步骤4）
+    virtual PointOffset GetLaserPointOffset() = 0;
+};
+
+// 模拟实现（用于测试）
+class MockVisionSystem : public IVisionSystem {
+public:
+    bool Initialize() override { return true; }
+    void Release() override {}
+    bool IsReady() override { return true; }
+    
+    VisionCoordinate GetModelPosition() override {
+        return VisionCoordinate(150.0, 200.0, 50.0);  // 模拟数据
+    }
+    
+    PuncturePoint GetPunctureTarget() override {
+        PuncturePoint pt;
+        pt.X = 0;
+        pt.Y = 0;
+        pt.Angle = 0;
+        return pt;  // 模拟：无偏移
+    }
+    
+    PointOffset GetLaserPointOffset() override {
+        return PointOffset();  // 模拟：无偏移
+    }
+};
+```
+
+### 4.3 坐标转换模块
+
+```cpp
+// CoordinateConverter.h
+#pragma once
+#include "RobotArmController.h"
+#include "IVisionSystem.h"
+
+class CoordinateConverter {
+public:
+    // 视觉坐标 → 机械臂坐标
+    static RobotArmPosition VisionToRobot(VisionCoordinate vision);
+    
+    // 机械臂坐标 → 视觉坐标（逆变换）
+    static VisionCoordinate RobotToVision(RobotArmPosition robot);
+    
+    // 设置标定矩阵（需现场标定）
+    static void SetCalibrationMatrix(double matrix[4][4]);
+    
+    // 加载/保存标定数据
+    static bool LoadCalibration(const CString& filePath);
+    static bool SaveCalibration(const CString& filePath);
+    
+private:
+    static double m_calibMatrix[4][4];  // 标定矩阵
+    static bool m_isCalibrated;         // 是否已标定
+};
+```
+
+---
+
+## 五、文件结构规划
+
+### 5.1 当前文件结构
+
+```
+MFCApplication1/
+├── MFCApplication1.vcxproj.filters    ✅ 已有
+├── MFCApplication1.cpp                ✅ 已有
+├── MFCApplication1.rc                 ✅ 已有
+├── MFCApplication1Dlg.h               ✅ 已有
+├── MFCApplication1Dlg.cpp             ✅ 已有
+├── Resource.h                         ✅ 已有
+│
+├── RobotArmController.h               ✅ 已有（TCP/IP机械臂）
+├── RobotArmController.cpp             ✅ 已有
+├── SerialPort.h                       ✅ 已有（232/485串口）
+├── SerialPort.cpp                     ✅ 已有
+├── IOController.h                     ✅ 已有（GPIO I/O）
+├── IOController.cpp                   ✅ 已有
+├── LogManager.h                       ✅ 已有（日志管理）
+├── LogManager.cpp                     ✅ 已有
+├── EVOC_BPI_DLL.def                   ✅ 已有（I/O硬件库）
+│
+└── docs/
+    └── 系统集成方案.md                 ✅ 本文档
+```
+
+### 5.2 待添加文件
+
+```
+MFCApplication1/
+├── Controllers/                       ⏳ 新建目录
+│   ├── ProcedureController.h          ⏳ 新增（流程控制器）
+│   └── ProcedureController.cpp        ⏳ 新增
+│
+├── Vision/                            ⏳ 新建目录
+│   ├── IVisionSystem.h                ⏳ 新增（视觉接口）
+│   ├── MockVisionSystem.h             ⏳ 新增（模拟实现）
+│   ├── MockVisionSystem.cpp           ⏳ 新增
+│   ├── CoordinateConverter.h          ⏳ 新增（坐标转换）
+│   └── CoordinateConverter.cpp        ⏳ 新增
+│
+└── Config/                            ⏳ 新建目录
+    ├── calibration.dat                ⏳ 标定数据文件
+    └── procedure_params.ini           ⏳ 流程参数配置
+```
+
+---
+
+## 六、开发优先级
+
+### 阶段一：基础框架（1-2周）
+
+#### 任务1：创建目录结构
+```bash
+mkdir Controllers
+mkdir Vision
+mkdir Config
+```
+
+#### 任务2：创建 `ProcedureController` 类
+- [x] 创建 `Controllers/ProcedureController.h`
+- [x] 创建 `Controllers/ProcedureController.cpp`
+- [x] 实现构造函数和析构函数
+- [x] 实现 `ExecuteFullProcedure()` 主流程
+- [x] 实现7个步骤的方法框架
+- [x] 添加日志记录和异常处理
+
+#### 任务3：实现 `MockVisionSystem`
+- [x] 创建 `Vision/IVisionSystem.h`
+- [x] 创建 `Vision/MockVisionSystem.h`
+- [x] 创建 `Vision/MockVisionSystem.cpp`
+- [x] 返回模拟坐标数据
+
+#### 任务4：开发 `CoordinateConverter`
+- [x] 创建 `Vision/CoordinateConverter.h`
+- [x] 创建 `Vision/CoordinateConverter.cpp`
+- [x] 实现齐次变换矩阵计算
+- [x] 提供标定数据加载/保存功能
+
+### 阶段二：核心算法（2-3周）
+
+#### 任务5：步骤2 - 激光粗调算法
+- [x] 实现PID控制器类
+- [x] 编写闭环调整逻辑
+- [x] 添加超时保护
+- [x] 单元测试
+
+#### 任务6：步骤4 - 高精度对位算法
+- [x] 多维闭环控制（XYZ三轴）
+- [x] 收敛判断逻辑
+- [x] 防震荡机制
+- [x] 单元测试
+
+#### 任务7：步骤6 - 电机控制协议封装
+- [x] 232串口指令发送
+- [x] 响应解析
+- [x] 到位信号监听
+- [x] 超时处理
+- [x] 单元测试
+
+### 阶段三：UI集成（1周）
+
+#### 任务8：主对话框增强
+- [ ] 添加"开始流程"按钮（IDC_BUTTON_START_PROCEDURE）
+- [ ] 添加"停止流程"按钮（IDC_BUTTON_STOP_PROCEDURE）
+- [ ] 添加步骤进度显示（IDC_STATIC_STEP_PROGRESS）
+- [ ] 添加参数配置对话框
+
+**UI修改位置**：
+- `MFCApplication1.rc`
+- `Resource.h`
+- `MFCApplication1Dlg.h`
+- `MFCApplication1Dlg.cpp`
+
+### 阶段四：测试与优化（2-3周）
+
+#### 任务9：单元测试
+- [ ] 每个步骤独立测试
+- [ ] 模拟数据验证
+- [ ] 异常场景测试
+
+#### 任务10：集成测试
+- [ ] 完整流程1→7测试
+- [ ] 硬件断线恢复测试
+- [ ] 超时保护测试
+
+#### 任务11：现场调试
+- [ ] 坐标系标定
+- [ ] PID参数调优
+- [ ] 精度验证
+
+### 阶段五：视觉集成（根据视觉系统进度）
+
+#### 任务12：视觉系统接口对接
+- [ ] 替换 `MockVisionSystem`
+- [ ] 真实坐标数据获取
+- [ ] RealSense SDK集成
+- [ ] YOLO模型集成
+
+---
+
+## 七、测试策略
+
+### 7.1 单元测试清单
+
+| 测试项 | 测试内容 | 验收标准 | 状态 |
+|-------|---------|---------|------|
+| 视觉定位 | 坐标转换准确性 | 误差 < 5mm | ⏳ |
+| 激光粗调 | 闭环收敛速度 | < 10次迭代 | ⏳ |
+| 姿态调整 | 角度精度 | ±2° | ⏳ |
+| 精准对位 | XYZ三轴精度 | ±0.2mm | ⏳ |
+| 消毒 | 时间准确性 | 2s ±0.1s | ⏳ |
+| 穿刺 | 深度准确性 | ±0.5mm | ⏳ |
+| 输液 | 开关响应 | < 100ms | ⏳ |
+
+### 7.2 集成测试场景
+
+#### 场景1：视觉+定位流程（步骤1→2→3）
+```
+测试步骤：
+1. 放置硅胶模型
+2. 启动相机
+3. 执行步骤1-3
+4. 记录各步骤执行时间和精度
+```
+
+#### 场景2：精准穿刺+输液流程（步骤4→5→6→7）
+```
+测试步骤：
+1. 手动定位到目标上方
+2. 执行步骤4-7
+3. 验证穿刺深度和输液启动
+```
+
+#### 场景3：完整流程（步骤1→7）
+```
+测试步骤：
+1. 系统复位
+2. 执行完整流程
+3. 记录总耗时和成功率
+```
+
+### 7.3 异常测试
+
+| 异常类型 | 测试方法 | 预期结果 |
+|---------|---------|---------|
+| 硬件断线 | 拔掉网线/串口线 | 提示错误，流程停止 |
+| 超时保护 | 模拟长时间无响应 | 超时后自动停止 |
+| 误差超限 | 人为干扰位置 | 检测到误差后重试或报警 |
+| 急停功能 | 点击急停按钮 | 所有设备立即停止 |
+| 断电续传 | 模拟断电重启 | 恢复到安全状态 |
+
+---
+
+## 八、附录：技术要点
+
+### 8.1 PID控制器实现
+
+```cpp
+// PIDController.h
+class PIDController {
+public:
+    PIDController(double kp, double ki, double kd)
+        : m_kp(kp), m_ki(ki), m_kd(kd),
+          m_prevError(0), m_integral(0) {}
+    
+    double Calculate(double error, double dt) {
+        m_integral += error * dt;
+        double derivative = (error - m_prevError) / dt;
+        m_prevError = error;
+        
+        return m_kp * error + m_ki * m_integral + m_kd * derivative;
+    }
+    
+    void Reset() {
+        m_prevError = 0;
+        m_integral = 0;
+    }
+    
+private:
+    double m_kp, m_ki, m_kd;
+    double m_prevError;
+    double m_integral;
+};
+```
+
+### 8.2 安全机制
+
+#### 运动范围限制
+```cpp
+bool CheckPositionSafe(RobotArmPosition pos) {
+    return pos.X > -500 && pos.X < 500 &&
+           pos.Y > -500 && pos.Y < 500 &&
+           pos.Z > 0    && pos.Z < 800;
+}
+```
+
+#### 急停处理
+```cpp
+void EmergencyStop() {
+    m_robot.EmergencyStop();
+    SendMotorCommand("STOP\r\n");
+    m_ioCtrl.CloseAllSwitches();
+    CLogManager::GetInstance().AddLog(_T("系统"), LOG_ERROR, _T("急停触发"));
+}
+```
+
+#### 超时保护
+```cpp
+// 每个步骤设置最大执行时间
+const DWORD STEP_TIMEOUT[] = {
+    5000,   // 步骤1: 5秒
+    3000,   // 步骤2: 3秒
+    3000,   // 步骤3: 3秒
+    5000,   // 步骤4: 5秒
+    2500,   // 步骤5: 2.5秒
+    10000,  // 步骤6: 10秒
+    1000    // 步骤7: 1秒
+};
+```
+
+### 8.3 坐标系标定流程
+
+#### 标定步骤
+1. 在机械臂工作空间内选择**4个标定点**
+2. 记录机械臂坐标 `(X_robot, Y_robot, Z_robot)`
+3. 用相机测量同一点的坐标 `(X_vision, Y_vision, Z_vision)`
+4. 使用最小二乘法计算变换矩阵 **T**
+5. 保存标定文件 `Config/calibration.dat`
+
+#### 标定矩阵格式
+```
+4×4 齐次变换矩阵 T = [R | t]
+                      [0 | 1]
+
+其中：
+R (3×3) = 旋转矩阵
+t (3×1) = 平移向量
+```
+
+#### 标定文件示例（calibration.dat）
+```
+1.0000  0.0000  0.0000  10.5000
+0.0000  1.0000  0.0000  20.3000
+0.0000  0.0000  1.0000  5.7000
+0.0000  0.0000  0.0000  1.0000
+```
+
+### 8.4 日志规范
+
+#### 日志级别使用
+```cpp
+// INFO - 正常流程信息
+CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_INFO, 
+    _T("步骤1：视觉定位完成"));
+
+// WARNING - 非致命警告
+CLogManager::GetInstance().AddLog(_T("激光测距"), LOG_WARNING, 
+    _T("距离值超出有效范围"));
+
+// ERROR - 错误需要处理
+CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_ERROR, 
+    _T("机械臂移动失败"));
+```
+
+#### 日志文件格式
+```
+[2024-01-15 10:30:25.123] [流程控制] [INFO] 步骤1：视觉定位开始
+[2024-01-15 10:30:28.456] [机械臂] [INFO] 移动到坐标 X=150.0, Y=200.0, Z=150.0
+[2024-01-15 10:30:30.789] [流程控制] [INFO] 步骤1：视觉定位完成
+```
+
+---
+
+## 📝 总结
+
+### 当前已完成模块
+✅ TCP/IP 机械臂通信（2秒超时）  
+✅ RS-232 电机串口（可发送指令）  
+✅ RS-485 激光测距仪（含数据解析）  
+✅ GPIO I/O 控制（完整功能）  
+✅ 日志管理系统  
+
+### 待开发模块
+⏳ 流程控制器 `ProcedureController`  
+⏳ 视觉系统接口 `IVisionSystem`（预留）  
+⏳ 坐标转换模块 `CoordinateConverter`  
+⏳ 闭环控制算法（PID）  
+⏳ UI 集成（一键启动流程）  
+
+### 开发周期预估
+- **阶段一**（基础框架）：1-2周
+- **阶段二**（核心算法）：2-3周
+- **阶段三**（UI集成）：1周
+- **阶段四**（测试优化）：2-3周
+- **阶段五**（视觉集成）：视视觉系统进度而定
+
+**总计**：约 6-9周（不含视觉系统开发时间）
+
+---
+
+## 📚 参考资料
+
+### 相关文档
+- `MFCApplication1/README.md` - 项目说明
+- `docs/硬件接口说明.md` - 硬件通信协议详细说明
+- `docs/标定流程.md` - 坐标系标定操作手册
+
+### 开发工具
+- Visual Studio 2019/2022
+- RealSense SDK（视觉系统）
+- Modbus测试工具（485调试）
+- Serial Port Monitor（串口调试）
+
+---
+
+**文档版本**：v2.0 Final  
+**最后更新**：2024年  
+**文档作者**：GitHub Copilot  
+**工作目录**：`E:\mywork\Users\cwx\source\repos\MFCApplication1\`
+
+---
+
+**本文档提供了从硬件接口到软件实现的完整技术路线图，所有接口设计已考虑后续集成的便利性，可直接作为开发指导文档使用。**

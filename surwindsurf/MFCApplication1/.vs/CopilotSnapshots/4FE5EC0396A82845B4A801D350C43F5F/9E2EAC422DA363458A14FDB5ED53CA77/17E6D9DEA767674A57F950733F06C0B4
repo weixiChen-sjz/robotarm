@@ -1,0 +1,297 @@
+﻿#include "pch.h"
+#include "IOController.h"
+#include "LogManager.h"
+
+#pragma comment(lib, "setupapi.lib")
+#pragma comment(lib, "EVOC_BPI_DLL.lib")
+
+CIOController::CIOController()
+    : m_GPIOOpen(FALSE)
+    , m_GPIOLevels(0)
+    , m_GPIOAPreLevels(0)
+    , m_bInfusionSwitchOpen(FALSE)
+    , m_bDisinfectSwitchOpen(FALSE)
+{
+}
+
+CIOController::~CIOController()
+{
+    Shutdown();
+}
+
+// GPIO初始化函数 - 完全按照原程序
+BOOL CIOController::Initialize()
+{
+    int Result = BPI_STATUS_FAILED;
+    
+    // 初始化BPI设备
+    Result = BPI_Init();
+    if (Result != BPI_STATUS_SUCCESSFUL)
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_ERROR, _T("BPI_Init 失败"));
+        AfxMessageBox(_T("GPIO 打开失败!"));
+        return FALSE;
+    }
+    
+    // 初始化GPIO
+    unsigned char num;
+    Result = BPI_GPIO_Init(&num);
+    if (Result != BPI_STATUS_SUCCESSFUL)
+    {
+        BPI_Deinit();
+        CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_ERROR, _T("BPI_GPIO_Init 失败"));
+        AfxMessageBox(_T("GPIO 打开失败!"));
+        return FALSE;
+    }
+    
+    CString strMsg;
+    strMsg.Format(_T("检测到 %d 个GPIO设备"), (int)num);
+    CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_INFO, strMsg);
+    
+    // 设置IO模式：0x0F = 0b00001111（按照原程序）
+    // 注意：原程序用0x0F，表示低4位(1-4)为输出，高4位(5-8)为输入
+    BYTE setIO = 0x0F;
+    Result = BPI_GPIO_SetIoMode(&setIO, 1);
+    if (Result != BPI_STATUS_SUCCESSFUL)
+    {
+        BPI_GPIO_Deinit();
+        BPI_Deinit();
+        CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_ERROR, _T("BPI_GPIO_SetIoMode 失败"));
+        AfxMessageBox(_T("GPIO 打开失败!"));
+        return FALSE;
+    }
+    
+    // 初始化所有输出为0（关闭状态）
+    setIO = 0;
+    BPI_GPIO_SetLevels(&setIO, 1);
+    
+    // 标记GPIO已打开
+    m_GPIOOpen = TRUE;
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_INFO, 
+        _T("GPIO初始化成功：输入(PIN 1-4) 输出(PIN 5-8)"));
+    
+    return TRUE;
+}
+
+// GPIO读写函数 - 完全按照原程序的GPIO_ReadWrite
+void CIOController::ProcessGPIO()
+{
+    // 判断GPIO是否打开成功
+    if (!m_GPIOOpen)
+    {
+        m_GPIOLevels = 0;
+        return;
+    }
+
+    // 读取GPIO输入（1-4号端口）
+    BPI_GPIO_GetLevels(&m_GPIOLevels, 1);
+    
+    // 1号IO（PIN 1 - 输液传感器）
+    if ((m_GPIOLevels & 0x1) && !(m_GPIOAPreLevels & 0x1))
+    {
+        // 上升沿 - 从低到高
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_INFO, 
+            _T("PIN 1 上升沿：输液传感器检测到液体"));
+    }
+    
+    // 检测下降沿
+    if (!(m_GPIOLevels & 0x1) && (m_GPIOAPreLevels & 0x1))
+    {
+        // 下降沿 - 从高到低
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_WARNING, 
+            _T("PIN 1 下降沿：输液传感器液体不足"));
+    }
+
+    // 2号IO（PIN 2 - 消毒液传感器）
+    if ((m_GPIOLevels & 0x2) && !(m_GPIOAPreLevels & 0x2))
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_INFO, 
+            _T("PIN 2 上升沿：消毒液传感器检测到液体"));
+    }
+    
+    if (!(m_GPIOLevels & 0x2) && (m_GPIOAPreLevels & 0x2))
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_WARNING, 
+            _T("PIN 2 下降沿：消毒液液位低"));
+    }
+
+    // 3号IO（PIN 3 - 保留）
+    if ((m_GPIOLevels & 0x4) && !(m_GPIOAPreLevels & 0x4))
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_INFO, 
+            _T("PIN 3 上升沿检测"));
+    }
+
+    // 4号IO（PIN 4 - 保留）
+    if ((m_GPIOLevels & 0x8) && !(m_GPIOAPreLevels & 0x8))
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_INFO, 
+            _T("PIN 4 上升沿检测"));
+    }
+
+    // 设置GPIO输出（5-8号端口）
+    // PIN 5 - 输液开关
+    if (m_bInfusionSwitchOpen)
+    {
+        BPI_GPIO_SetPinLevel(5, 1);
+    }
+    else
+    {
+        BPI_GPIO_SetPinLevel(5, 0);
+    }
+
+    // PIN 6 - 消毒液开关
+    if (m_bDisinfectSwitchOpen)
+    {
+        BPI_GPIO_SetPinLevel(6, 1);
+    }
+    else
+    {
+        BPI_GPIO_SetPinLevel(6, 0);
+    }
+
+    // PIN 7 - 保留
+    if (0)  // 原程序中始终为1，这里保持兼容
+    {
+        BPI_GPIO_SetPinLevel(7, 1);
+    }
+    else
+    {
+        BPI_GPIO_SetPinLevel(7, 0);
+    }
+
+    // PIN 8 - 保留
+    if (0)  // 原程序中始终为1，这里保持兼容
+    {
+        BPI_GPIO_SetPinLevel(8, 1);
+    }
+    else
+    {
+        BPI_GPIO_SetPinLevel(8, 0);
+    }
+
+    // 保存当前输入状态用于下次边缘检测
+    m_GPIOAPreLevels = m_GPIOLevels;
+}
+
+void CIOController::Shutdown()
+{
+    if (!m_GPIOOpen)
+    {
+        return;
+    }
+    
+    // 关闭所有输出
+    BYTE levels = 0x00;
+    BPI_GPIO_SetLevels(&levels, 1);
+    
+    // 关闭GPIO
+    BPI_GPIO_Close();
+    BPI_Deinit();
+    
+    m_GPIOOpen = FALSE;
+    m_bInfusionSwitchOpen = FALSE;
+    m_bDisinfectSwitchOpen = FALSE;
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_INFO, _T("GPIO已关闭"));
+}
+
+// 业务层封装方法
+BOOL CIOController::OpenInfusionSwitch()
+{
+    if (!m_GPIOOpen)
+    {
+        return FALSE;
+    }
+    
+    m_bInfusionSwitchOpen = TRUE;
+    BPI_GPIO_SetPinLevel(5, 1);
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO输出"), LOG_INFO, 
+        _T("PIN 5 输液开关已打开"));
+    
+    return TRUE;
+}
+
+BOOL CIOController::CloseInfusionSwitch()
+{
+    if (!m_GPIOOpen)
+    {
+        return FALSE;
+    }
+    
+    m_bInfusionSwitchOpen = FALSE;
+    BPI_GPIO_SetPinLevel(5, 0);
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO输出"), LOG_INFO, 
+        _T("PIN 5 输液开关已关闭"));
+    
+    return TRUE;
+}
+
+BOOL CIOController::OpenDisinfectSwitch()
+{
+    if (!m_GPIOOpen)
+    {
+        return FALSE;
+    }
+    
+    m_bDisinfectSwitchOpen = TRUE;
+    BPI_GPIO_SetPinLevel(6, 1);
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO输出"), LOG_INFO, 
+        _T("PIN 6 消毒液开关已打开"));
+    
+    return TRUE;
+}
+
+BOOL CIOController::CloseDisinfectSwitch()
+{
+    if (!m_GPIOOpen)
+    {
+        return FALSE;
+    }
+    
+    m_bDisinfectSwitchOpen = FALSE;
+    BPI_GPIO_SetPinLevel(6, 0);
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO输出"), LOG_INFO, 
+        _T("PIN 6 消毒液开关已关闭"));
+    
+    return TRUE;
+}
+
+BOOL CIOController::GetInfusionSensorState()
+{
+    if (!m_GPIOOpen)
+    {
+        return FALSE;
+    }
+    
+    // 读取PIN 1的状态（bit 0）
+    return (m_GPIOLevels & 0x01) != 0;
+}
+
+BOOL CIOController::GetDisinfectSensorState()
+{
+    if (!m_GPIOOpen)
+    {
+        return FALSE;
+    }
+    
+    // 读取PIN 2的状态（bit 1）
+    return (m_GPIOLevels & 0x02) != 0;
+}
+
+CString CIOController::GetHardwareStateText() const
+{
+    if (m_GPIOOpen)
+    {
+        return _T("已连接（GPIO）");
+    }
+    else
+    {
+        return _T("未连接");
+    }
+}

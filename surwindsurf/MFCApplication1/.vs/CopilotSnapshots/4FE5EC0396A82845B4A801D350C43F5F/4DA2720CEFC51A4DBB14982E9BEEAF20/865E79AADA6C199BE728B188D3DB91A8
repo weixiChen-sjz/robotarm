@@ -1,0 +1,94 @@
+﻿#pragma once
+#include <Windows.h>
+
+// I/O 通道类型
+enum IOChannelType
+{
+    IO_TYPE_INPUT = 0,
+    IO_TYPE_OUTPUT
+};
+
+// I/O 通道状态
+enum IOChannelState
+{
+    IO_STATE_LOW = 0,
+    IO_STATE_HIGH = 1,
+    IO_STATE_UNKNOWN = -1
+};
+
+// 设备映射定义
+// 通过物理接线连接到对应的硬件设备
+#define IO_DEVICE_INFUSION_INPUT    0    // 输液传感器输入（通道0）
+#define IO_DEVICE_DISINFECT_INPUT   1    // 消毒液传感器输入（通道1）
+#define IO_DEVICE_INFUSION_OUTPUT   2    // 输液开关输出（通道2）
+#define IO_DEVICE_DISINFECT_OUTPUT  3    // 消毒液开关输出（通道3）
+
+// I/O 通道信息
+struct IOChannelInfo
+{
+    int nChannelId;           // 通道ID
+    IOChannelType type;       // 通道类型
+    IOChannelState state;     // 当前状态
+    CString strName;          // 通道名称
+    CString strDeviceName;    // 设备名称
+    
+    IOChannelInfo() 
+        : nChannelId(0)
+        , type(IO_TYPE_INPUT)
+        , state(IO_STATE_UNKNOWN)
+        , strName(_T(""))
+        , strDeviceName(_T(""))
+    {}
+};
+
+class CIOController
+{
+public:
+    CIOController();
+    ~CIOController();
+
+    // 初始化 I/O 控制器
+    BOOL Initialize();
+    
+    // 关闭 I/O 控制器
+    void Shutdown();
+    
+    // 读取输入通道状态
+    IOChannelState ReadInput(int nChannelId);
+    
+    // 设置输出通道状态
+    BOOL WriteOutput(int nChannelId, IOChannelState state);
+    
+    // 获取通道信息
+    BOOL GetChannelInfo(int nChannelId, IOChannelInfo& info);
+    
+    // 设置通道信息
+    void SetChannelInfo(int nChannelId, const IOChannelInfo& info);
+    
+    // 刷新所有输入通道状态
+    void RefreshInputs();
+    
+    // 检查是否已初始化
+    BOOL IsInitialized() const { return m_bInitialized; }
+    
+    // 测试用：模拟输入状态变化（仅用于测试，实际硬件不需要此方法）
+    void SimulateInputChange(int nChannelId, IOChannelState newState);
+    
+    // 设备控制方法（业务层封装）
+    BOOL OpenInfusionSwitch();      // 打开输液开关
+    BOOL CloseInfusionSwitch();     // 关闭输液开关
+    BOOL OpenDisinfectSwitch();     // 打开消毒液开关
+    BOOL CloseDisinfectSwitch();    // 关闭消毒液开关
+    BOOL GetInfusionSensorState();  // 获取输液传感器状态
+    BOOL GetDisinfectSensorState(); // 获取消毒液传感器状态
+
+private:
+    BOOL m_bInitialized;              // 是否已初始化
+    IOChannelInfo m_channels[4];      // 4个通道：2个输入+2个输出
+    
+    // 模拟硬件读取
+    IOChannelState SimulateReadHardware(int nChannelId);
+    
+    // 模拟硬件写入
+    BOOL SimulateWriteHardware(int nChannelId, IOChannelState state);
+};

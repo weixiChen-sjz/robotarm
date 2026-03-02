@@ -1,0 +1,55 @@
+﻿#pragma once
++
++#include <Windows.h>
++
++// Proxy that talks to x86 IOBridge process via named pipe.
++// Keeps same surface as CIOController methods used by the app.
++
++class CIOControllerProxy
++{
++public:
++	CIOControllerProxy();
++	~CIOControllerProxy();
++
++	BOOL Initialize();
++	void ProcessGPIO();
++	void Shutdown();
++
++	BOOL IsOpen() const { return m_bConnected; }
++	BOOL IsInitialized() const { return m_bConnected; }
++	BOOL IsHardwareConnected() const { return m_bConnected; }
++
++	BYTE GetGPIOLevels();
++
++	BOOL OpenInfusionSwitch();
++	BOOL CloseInfusionSwitch();
++	BOOL OpenDisinfectSwitch();
++	BOOL CloseDisinfectSwitch();
++	BOOL OpenLaserSwitch();
++	BOOL CloseLaserSwitch();
++
++	BOOL GetInfusionSensorState();
++	BOOL GetDisinfectSensorState();
++	BOOL GetLaserSensorState();
++
++	BOOL GetInfusionSwitchState();
++	BOOL GetDisinfectSwitchState();
++	BOOL GetLaserSwitchState();
++
++	CString GetHardwareStateText() const;
++
++	// Ensures IOBridge.exe is running.
++	BOOL EnsureBridgeRunning();
++
++private:
++	HANDLE m_hPipe;
++	BOOL m_bConnected;
++	BYTE m_lastGPIOLevels;
++	BOOL m_lastInfusionOpen;
++	BOOL m_lastDisinfectOpen;
++	BOOL m_lastLaserOpen;
++
++	BOOL ConnectPipe();
++	void ClosePipe();
++	BOOL SendCommand(uint32_t cmd, const void* payload, DWORD payloadSize, void* outPayload, DWORD outPayloadCapacity, DWORD* outPayloadSize);
++};

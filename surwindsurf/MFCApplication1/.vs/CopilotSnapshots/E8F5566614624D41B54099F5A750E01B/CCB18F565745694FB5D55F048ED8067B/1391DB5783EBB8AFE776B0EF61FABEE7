@@ -1,0 +1,44 @@
+﻿#include "pch.h"
+#include "EVOC_BPI_DLL.h"
+
+// BPI GPIO Stub Implementation
+// 这些是存根函数，用于在没有实际硬件时编译通过
+
+BOOL BPI_Init(void)
+{
+    return FALSE;
+}
+
+BOOL BPI_GPIO_Init(BYTE* pNum)
+{
+    if (pNum)
+        *pNum = 0;
+    return FALSE;
+}
+
+BOOL BPI_GPIO_SetIoMode(BYTE* pBuf, BYTE nChannels)
+{
+    return FALSE;
+}
+
+BOOL BPI_GPIO_SetLevels(BYTE* pBuf, BYTE nChannels)
+{
+    return FALSE;
+}
+
+BOOL BPI_GPIO_GetLevels(BYTE* pBuf, BYTE nChannels)
+{
+    if (pBuf && nChannels > 0)
+    {
+        for (BYTE i = 0; i < nChannels; i++)
+        {
+            pBuf[i] = 0;
+        }
+    }
+    return FALSE;
+}
+
+BOOL BPI_GPIO_SetPinLevel(BYTE nPin, BYTE nLevel)
+{
+    return FALSE;
+}

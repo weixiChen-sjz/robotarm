@@ -1,0 +1,109 @@
+﻿#include "pch.h"
+#include "MockVisionSystem.h"
+#include <cmath>
+
+CMockVisionSystem::CMockVisionSystem()
+{
+	// 初始化模拟数据（默认预设位置）
+	m_fModelX = 200.0f;       // 相机坐标系：X=200mm
+	m_fModelY = 150.0f;       // 相机坐标系：Y=150mm
+	m_fModelZ = 500.0f;       // 相机坐标系：Z=500mm（距离）
+	
+	m_fPunctureX = 205.0f;    // 穿刺点略微偏移
+	m_fPunctureY = 155.0f;
+	m_fPunctureZ = 500.0f;
+	
+	// 状态初始化
+	m_bConnected = TRUE;      // 模拟系统默认已连接
+	m_bCalibrated = TRUE;     // 模拟系统默认已标定
+	
+	// 初始化单位变换矩阵（4x4）
+	memset(m_transformMatrix, 0, sizeof(m_transformMatrix));
+	m_transformMatrix[0] = 1.0f;   // [0,0]
+	m_transformMatrix[5] = 1.0f;   // [1,1]
+	m_transformMatrix[10] = 1.0f;  // [2,2]
+	m_transformMatrix[15] = 1.0f;  // [3,3]
+}
+
+CMockVisionSystem::~CMockVisionSystem()
+{
+}
+
+// 粗定位：识别模型目标
+BOOL CMockVisionSystem::DetectModel(float& x, float& y, float& z)
+{
+	if (!m_bConnected)
+	{
+		return FALSE;  // 未连接，返回失败
+	}
+	
+	// 返回预设的模拟坐标
+	x = m_fModelX;
+	y = m_fModelY;
+	z = m_fModelZ;
+	
+	// 模拟成功识别
+	return TRUE;
+}
+
+// 精定位：识别穿刺点
+BOOL CMockVisionSystem::DetectPuncturePoint(float& x, float& y, float& z)
+{
+	if (!m_bConnected)
+	{
+		return FALSE;  // 未连接，返回失败
+	}
+	
+	// 返回预设的穿刺点坐标
+	x = m_fPunctureX;
+	y = m_fPunctureY;
+	z = m_fPunctureZ;
+	
+	// 模拟成功识别
+	return TRUE;
+}
+
+// 坐标转换（相机坐标系 → 机械臂坐标系）
+void CMockVisionSystem::TransformCoordinate(
+	float camX, float camY, float camZ,
+	float& robotX, float& robotY, float& robotZ)
+{
+	// 简化版坐标转换（实际需要手眼标定矩阵）
+	// 这里使用简单的平移 + 缩放
+	
+	// 假设：
+	// - 相机坐标原点在机械臂坐标 (100, 100, 300)
+	// - 相机X轴对应机械臂X轴
+	// - 相机Y轴对应机械臂Y轴
+	// - 相机Z轴对应机械臂-Z轴（深度方向相反）
+	
+	const float OFFSET_X = 100.0f;
+	const float OFFSET_Y = 100.0f;
+	const float OFFSET_Z = 300.0f;
+	
+	robotX = camX + OFFSET_X;
+	robotY = camY + OFFSET_Y;
+	robotZ = OFFSET_Z - camZ;  // Z轴反向
+	
+	// TODO: 实际应用中需要使用4x4变换矩阵
+	// [robotX]   [m11 m12 m13 m14]   [camX]
+	// [robotY] = [m21 m22 m23 m24] * [camY]
+	// [robotZ]   [m31 m32 m33 m34]   [camZ]
+	// [   1  ]   [ 0   0   0   1 ]   [ 1  ]
+}
+
+// 设置模拟的模型坐标（用于测试）
+void CMockVisionSystem::SetMockModelPosition(float x, float y, float z)
+{
+	m_fModelX = x;
+	m_fModelY = y;
+	m_fModelZ = z;
+}
+
+// 设置模拟的穿刺点坐标（用于测试）
+void CMockVisionSystem::SetMockPuncturePoint(float x, float y, float z)
+{
+	m_fPunctureX = x;
+	m_fPunctureY = y;
+	m_fPunctureZ = z;
+}

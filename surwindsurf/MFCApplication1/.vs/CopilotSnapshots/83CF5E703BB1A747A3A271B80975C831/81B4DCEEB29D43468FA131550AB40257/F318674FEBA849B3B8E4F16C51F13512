@@ -1,0 +1,97 @@
+﻿//{{NO_DEPENDENCIES}}
+// Microsoft Visual C++ 生成的包含文件。
+// 由 MFCApplication1.rc 使用
+//
+#define IDR_MAINFRAME					128
+#define IDM_ABOUTBOX					0x0010
+#define IDD_ABOUTBOX					100
+#define IDS_ABOUTBOX					101
+#define IDD_MFCAPPLICATION1_DIALOG				102
+
+// 标准控件ID
+#define IDC_STATIC                      -1
+
+// 232串口控件ID
+#define IDC_COMBO_COM232                1000
+#define IDC_COMBO_BAUDRATE232           1001
+#define IDC_COMBO_DATABITS232           1002
+#define IDC_COMBO_STOPBITS232           1003
+#define IDC_COMBO_PARITY232             1004
+#define IDC_BUTTON_OPEN232              1005
+#define IDC_EDIT_SEND232                1006
+#define IDC_BUTTON_SEND232              1007
+#define IDC_LIST_RECEIVE232             1008
+#define IDC_CHECK_HEX232                1009
+#define IDC_BUTTON_CLEAR232             1010
+
+// 485串口控件ID
+#define IDC_COMBO_COM485                1011
+#define IDC_COMBO_BAUDRATE485           1012
+#define IDC_COMBO_DATABITS485           1013
+#define IDC_COMBO_STOPBITS485           1014
+#define IDC_COMBO_PARITY485             1015
+#define IDC_BUTTON_OPEN485              1016
+#define IDC_EDIT_SEND485                1017
+#define IDC_BUTTON_SEND485              1018
+#define IDC_LIST_RECEIVE485             1019
+#define IDC_CHECK_HEX485                1020
+#define IDC_BUTTON_CLEAR485             1021
+
+// 机械臂控件ID
+#define IDC_EDIT_ROBOT_IP               1022  // 机械臂IP地址输入框（替代原COM口）
+#define IDC_EDIT_ROBOT_PORT             1023  // 机械臂端口输入框（替代原波特率）
+#define IDC_BUTTON_CONNECT_ROBOT        1024
+#define IDC_BUTTON_INIT_ROBOT           1025
+#define IDC_BUTTON_HOME_ROBOT           1026
+#define IDC_BUTTON_START_ROBOT          1027
+#define IDC_BUTTON_STOP_ROBOT           1028
+#define IDC_BUTTON_ESTOP_ROBOT          1029
+#define IDC_EDIT_X_POS                  1030
+#define IDC_EDIT_Y_POS                  1031
+#define IDC_EDIT_Z_POS                  1032
+#define IDC_SLIDER_SPEED                1033
+#define IDC_STATIC_SPEED                1034
+#define IDC_BUTTON_POS1                 1035
+#define IDC_BUTTON_POS2                 1036
+#define IDC_BUTTON_POS3                 1037
+#define IDC_STATIC_ROBOT_STATUS         1038
+
+// I/O控件ID
+#define IDC_BUTTON_IO_INIT              1039  // 初始化I/O按钮
+#define IDC_STATIC_IO_HW_STATUS         1040  // 硬件状态显示
+#define IDC_STATIC_IO1_STATUS           1041  // 输液传感器状态显示
+#define IDC_STATIC_IO2_STATUS           1042  // 消毒液传感器状态显示
+#define IDC_STATIC_IO3_STATUS           1043  // 输液开关状态显示
+#define IDC_STATIC_IO4_STATUS           1044  // 消毒液开关状态显示
+#define IDC_STATIC_IO5_STATUS           1045  // 激光测距仪状态显示
+#define IDC_STATIC_IO6_STATUS           1060  // 第六个IO状态标签显示
+#define IDC_BUTTON_INFUSION_OPEN        1046  // 打开输液开关按钮
+#define IDC_BUTTON_INFUSION_CLOSE       1047  // 关闭输液开关按钮
+#define IDC_BUTTON_DISINFECT_OPEN       1048  // 打开消毒液开关按钮
+#define IDC_BUTTON_DISINFECT_CLOSE      1049  // 关闭消毒液开关按钮
+#define IDC_BUTTON_LASER_OPEN           1050  // 打开激光测距仪按钮
+#define IDC_BUTTON_LASER_CLOSE          1051  // 关闭激光测距仪按钮
+
+// 日志控件ID
+#define IDC_LIST_LOG                    1052
+#define IDC_BUTTON_EXPORT_LOG           1053
+#define IDC_BUTTON_CLEAR_LOG            1054
+
+// 分组框ID
+#define IDC_GROUP_232                   1055
+#define IDC_GROUP_485                   1056
+#define IDC_GROUP_ROBOT                 1057
+#define IDC_GROUP_IO                    1058
+#define IDC_GROUP_LOG                   1059
+
+// 新对象的下一组默认值
+//
+#ifdef APSTUDIO_INVOKED
+#ifndef APSTUDIO_READONLY_SYMBOLS
+
+#define _APS_NEXT_RESOURCE_VALUE	129
+#define _APS_NEXT_CONTROL_VALUE		1061
+#define _APS_NEXT_SYMED_VALUE		101
+#define _APS_NEXT_COMMAND_VALUE		32771
+#endif
+#endif

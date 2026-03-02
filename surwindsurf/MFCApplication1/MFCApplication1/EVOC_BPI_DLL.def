@@ -1,0 +1,12 @@
+LIBRARY EVOC_BPI_DLL
+EXPORTS
+    BPI_Init
+    BPI_Deinit
+    BPI_GPIO_Init
+    BPI_GPIO_Deinit
+    BPI_GPIO_SetIoMode
+    BPI_GPIO_GetIoMode
+    BPI_GPIO_SetLevels
+    BPI_GPIO_GetLevels
+    BPI_GPIO_SetPinLevel
+    BPI_GPIO_GetPinLevel

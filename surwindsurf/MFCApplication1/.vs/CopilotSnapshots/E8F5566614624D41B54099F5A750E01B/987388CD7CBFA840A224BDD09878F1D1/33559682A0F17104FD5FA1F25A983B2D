@@ -1,0 +1,578 @@
+﻿#include "pch.h"
+#include "IOController.h"
+#include "LogManager.h"
+
+#pragma comment(lib, "setupapi.lib")
+// 不再需要链接 EVOC_BPI_DLL.lib
+
+CIOController::CIOController()
+    : m_GPIOOpen(FALSE)
+    , m_GPIOLevels(0)
+    , m_GPIOAPreLevels(0)
+    , m_bInfusionSwitchOpen(FALSE)
+    , m_bDisinfectSwitchOpen(FALSE)
+    , m_bLaserSwitchOpen(FALSE)
+    , m_hBpiDll(NULL)
+    , m_pfnBPI_Init(NULL)
+    , m_pfnBPI_Deinit(NULL)
+    , m_pfnBPI_GPIO_Init(NULL)
+    , m_pfnBPI_GPIO_Deinit(NULL)
+    , m_pfnBPI_GPIO_SetIoMode(NULL)
+    , m_pfnBPI_GPIO_SetLevels(NULL)
+    , m_pfnBPI_GPIO_GetLevels(NULL)
+    , m_pfnBPI_GPIO_SetPinLevel(NULL)
+{
+}
+
+CIOController::~CIOController()
+{
+    Shutdown();
+}
+
+// 加载BPI DLL
+BOOL CIOController::LoadBpiDll()
+{
+    // 加载DLL
+    m_hBpiDll = LoadLibrary(_T("EVOC_BPI_DLL.dll"));
+    if (!m_hBpiDll)
+    {
+        DWORD dwError = GetLastError();
+        CString strMsg;
+        strMsg.Format(_T("加载 EVOC_BPI_DLL.dll 失败，错误代码: %d"), dwError);
+        CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_ERROR, strMsg);
+        return FALSE;
+    }
+    
+    // 获取函数指针
+    m_pfnBPI_Init = (PFN_BPI_Init)GetProcAddress(m_hBpiDll, "BPI_Init");
+    m_pfnBPI_Deinit = (PFN_BPI_Deinit)GetProcAddress(m_hBpiDll, "BPI_Deinit");
+    m_pfnBPI_GPIO_Init = (PFN_BPI_GPIO_Init)GetProcAddress(m_hBpiDll, "BPI_GPIO_Init");
+    m_pfnBPI_GPIO_Deinit = (PFN_BPI_GPIO_Deinit)GetProcAddress(m_hBpiDll, "BPI_GPIO_Deinit");
+    m_pfnBPI_GPIO_SetIoMode = (PFN_BPI_GPIO_SetIoMode)GetProcAddress(m_hBpiDll, "BPI_GPIO_SetIoMode");
+    m_pfnBPI_GPIO_SetLevels = (PFN_BPI_GPIO_SetLevels)GetProcAddress(m_hBpiDll, "BPI_GPIO_SetLevels");
+    m_pfnBPI_GPIO_GetLevels = (PFN_BPI_GPIO_GetLevels)GetProcAddress(m_hBpiDll, "BPI_GPIO_GetLevels");
+    m_pfnBPI_GPIO_SetPinLevel = (PFN_BPI_GPIO_SetPinLevel)GetProcAddress(m_hBpiDll, "BPI_GPIO_SetPinLevel");
+    
+    // 检查必需的函数是否都成功获取
+    if (!m_pfnBPI_Init || !m_pfnBPI_GPIO_Init || !m_pfnBPI_GPIO_SetIoMode || 
+        !m_pfnBPI_GPIO_SetLevels || !m_pfnBPI_GPIO_GetLevels || !m_pfnBPI_GPIO_SetPinLevel)
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_ERROR, 
+            _T("获取DLL函数指针失败"));
+        UnloadBpiDll();
+        return FALSE;
+    }
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_INFO, 
+        _T("EVOC_BPI_DLL.dll 加载成功"));
+    
+    return TRUE;
+}
+
+// 卸载BPI DLL
+void CIOController::UnloadBpiDll()
+{
+    if (m_hBpiDll)
+    {
+        FreeLibrary(m_hBpiDll);
+        m_hBpiDll = NULL;
+    }
+    
+    // 清空函数指针
+    m_pfnBPI_Init = NULL;
+    m_pfnBPI_Deinit = NULL;
+    m_pfnBPI_GPIO_Init = NULL;
+    m_pfnBPI_GPIO_Deinit = NULL;
+    m_pfnBPI_GPIO_SetIoMode = NULL;
+    m_pfnBPI_GPIO_SetLevels = NULL;
+    m_pfnBPI_GPIO_GetLevels = NULL;
+    m_pfnBPI_GPIO_SetPinLevel = NULL;
+}
+
+// GPIO初始化函数 - 完全按照原程序
+BOOL CIOController::Initialize()
+{
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, 
+        _T(">>> 开始初始化GPIO"));
+    
+    // 先加载DLL
+    if (!LoadBpiDll())
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_ERROR, 
+            _T(">>> LoadBpiDll 失败"));
+        AfxMessageBox(_T("加载GPIO库失败！\n请确保 EVOC_BPI_DLL.dll 在程序目录下。"));
+        return FALSE;
+    }
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, 
+        _T(">>> LoadBpiDll 成功，开始初始化BPI设备"));
+    
+    int Result = BPI_STATUS_FAILED;
+    
+    // 初始化BPI设备
+    Result = m_pfnBPI_Init();
+    CString strMsg;
+    strMsg.Format(_T(">>> BPI_Init 返回值: %d"), Result);
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strMsg);
+    
+    if (Result != BPI_STATUS_SUCCESSFUL)
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_ERROR, _T("BPI_Init 失败"));
+        AfxMessageBox(_T("GPIO 打开失败!\n\n可能原因：\n1. GPIO硬件未连接\n2. 驱动程序未安装\n3. 设备被占用\n\n请检查硬件连接和驱动程序。"));
+        UnloadBpiDll();
+        return FALSE;
+    }
+    
+    // 初始化GPIO
+    unsigned char num;
+    Result = m_pfnBPI_GPIO_Init(&num);
+    strMsg.Format(_T(">>> BPI_GPIO_Init 返回值: %d, GPIO数量: %d"), Result, (int)num);
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strMsg);
+    
+    if (Result != BPI_STATUS_SUCCESSFUL)
+    {
+        m_pfnBPI_Deinit();
+        CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_ERROR, _T("BPI_GPIO_Init 失败"));
+        AfxMessageBox(_T("GPIO 打开失败!"));
+        UnloadBpiDll();
+        return FALSE;
+    }
+    
+    strMsg.Format(_T("检测到 %d 个GPIO设备"), (int)num);
+    CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_INFO, strMsg);
+    
+    // ?? IO模式配置 - 这里是关键！
+    // 尝试方案1：0x0F (bit=1为输入，bit=0为输出)
+    BYTE setIO = 0x0F;  // 0b00001111
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO测试"), LOG_WARNING, 
+        _T(">>> 尝试IO模式配置: 0x0F (如果不行会尝试0xF0)"));
+    
+    Result = m_pfnBPI_GPIO_SetIoMode(&setIO, 1);
+    strMsg.Format(_T(">>> BPI_GPIO_SetIoMode(0x%02X) 返回值: %d"), setIO, Result);
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strMsg);
+    
+    if (Result != BPI_STATUS_SUCCESSFUL)
+    {
+        // 如果0x0F失败，尝试0xF0
+        CLogManager::GetInstance().AddLog(_T("GPIO测试"), LOG_WARNING, 
+            _T(">>> 0x0F失败，尝试0xF0"));
+        
+        setIO = 0xF0;  // 0b11110000
+        Result = m_pfnBPI_GPIO_SetIoMode(&setIO, 1);
+        strMsg.Format(_T(">>> BPI_GPIO_SetIoMode(0x%02X) 返回值: %d"), setIO, Result);
+        CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strMsg);
+        
+        if (Result != BPI_STATUS_SUCCESSFUL)
+        {
+            m_pfnBPI_GPIO_Deinit();
+            m_pfnBPI_Deinit();
+            CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_ERROR, _T("BPI_GPIO_SetIoMode 失败"));
+            AfxMessageBox(_T("GPIO 打开失败!"));
+            UnloadBpiDll();
+            return FALSE;
+        }
+        
+        strMsg.Format(_T(">>> 使用配置: 0x%02X"), setIO);
+        CLogManager::GetInstance().AddLog(_T("GPIO测试"), LOG_INFO, strMsg);
+    }
+    else
+    {
+        strMsg.Format(_T(">>> 使用配置: 0x%02X"), setIO);
+        CLogManager::GetInstance().AddLog(_T("GPIO测试"), LOG_INFO, strMsg);
+    }
+    
+    // 初始化所有输出为0（关闭状态）
+    setIO = 0;
+    Result = m_pfnBPI_GPIO_SetLevels(&setIO, 1);
+    strMsg.Format(_T(">>> BPI_GPIO_SetLevels(0x00) 返回值: %d"), Result);
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strMsg);
+    
+    // 标记GPIO已打开
+    m_GPIOOpen = TRUE;
+    
+    // 自动测试输出功能
+    CLogManager::GetInstance().AddLog(_T("GPIO测试"), LOG_WARNING, 
+        _T(">>> 开始自动测试输出功能（每个PIN测试500ms）"));
+    
+    for (int pin = 5; pin <= 8; pin++)
+    {
+        // 打开
+        int testResult = m_pfnBPI_GPIO_SetPinLevel(pin, 1);
+        strMsg.Format(_T(">>> 测试PIN %d = 1, 返回值: %d"), pin, testResult);
+        CLogManager::GetInstance().AddLog(_T("GPIO测试"), LOG_INFO, strMsg);
+        Sleep(500);
+        
+        // 关闭
+        testResult = m_pfnBPI_GPIO_SetPinLevel(pin, 0);
+        strMsg.Format(_T(">>> 测试PIN %d = 0, 返回值: %d"), pin, testResult);
+        CLogManager::GetInstance().AddLog(_T("GPIO测试"), LOG_INFO, strMsg);
+        Sleep(500);
+    }
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO测试"), LOG_WARNING, 
+        _T(">>> 输出测试完成！请用万用表检查PIN 5-8是否有电压变化"));
+    
+    // 读取当前输入状态
+    BYTE initialLevels = 0;
+    m_pfnBPI_GPIO_GetLevels(&initialLevels, 1);
+    strMsg.Format(_T(">>> 当前输入电平: 0x%02X (二进制: %d%d%d%d%d%d%d%d)"),
+        initialLevels,
+        (initialLevels & 0x80) ? 1 : 0,
+        (initialLevels & 0x40) ? 1 : 0,
+        (initialLevels & 0x20) ? 1 : 0,
+        (initialLevels & 0x10) ? 1 : 0,
+        (initialLevels & 0x08) ? 1 : 0,
+        (initialLevels & 0x04) ? 1 : 0,
+        (initialLevels & 0x02) ? 1 : 0,
+        (initialLevels & 0x01) ? 1 : 0);
+    CLogManager::GetInstance().AddLog(_T("GPIO测试"), LOG_INFO, strMsg);
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_INFO, 
+        _T("GPIO初始化成功。输入(PIN 1-4): PIN1=输液 PIN2=消毒液 PIN3=激光测距仪传感器 输出(PIN 5-8): PIN5=运动灯(未用) PIN6=消毒液 PIN7=输液 PIN8=激光测距仪电源"));
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, 
+        _T(">>> GPIO初始化完成，m_GPIOOpen=TRUE"));
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO测试"), LOG_WARNING, 
+        _T(">>> 提示：现在可以短接PIN 1-4到GND测试输入，观察传感器状态是否变化"));
+    
+    return TRUE;
+}
+
+// GPIO读写函数 - 完全按照原程序的GPIO_ReadWrite
+void CIOController::ProcessGPIO()
+{
+    // 判断GPIO是否打开成功
+    if (!m_GPIOOpen || !m_pfnBPI_GPIO_GetLevels)
+    {
+        m_GPIOLevels = 0;
+        return;
+    }
+
+    // 读取GPIO输入（1-4号端口）
+    BYTE newLevels = 0;
+    int readResult = m_pfnBPI_GPIO_GetLevels(&newLevels, 1);
+    
+    if (readResult != BPI_STATUS_SUCCESSFUL)
+    {
+        // 添加错误处理：读取失败时记录日志
+        CString strError;
+        strError.Format(_T("读取GPIO输入电平失败，返回值: %d"), readResult);
+        CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_WARNING, strError);
+        return;
+    }
+    
+    // 只在电平值变化时记录日志（避免刷屏）
+    static BYTE lastLoggedLevels = 0xFF;  // 初始值设为不可能的值
+    if (newLevels != lastLoggedLevels)
+    {
+        CString strDebug;
+        strDebug.Format(_T("GPIO输入电平: 0x%02X (PIN1=%d PIN2=%d PIN3=%d PIN4=%d)"), 
+            newLevels,
+            (newLevels & 0x01) ? 1 : 0,
+            (newLevels & 0x02) ? 1 : 0,
+            (newLevels & 0x04) ? 1 : 0,
+            (newLevels & 0x08) ? 1 : 0);
+        CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strDebug);
+        lastLoggedLevels = newLevels;
+    }
+    
+    m_GPIOLevels = newLevels;
+    
+    // 1号IO（PIN 1 - 输液传感器）
+    if ((m_GPIOLevels & 0x1) && !(m_GPIOAPreLevels & 0x1))
+    {
+        // 上升沿 - 从低到高
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_INFO, 
+            _T("PIN 1 上升沿：输液传感器检测到液体"));
+    }
+    
+    // 检测下降沿
+    if (!(m_GPIOLevels & 0x1) && (m_GPIOAPreLevels & 0x1))
+    {
+        // 下降沿 - 从高到低
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_WARNING, 
+            _T("PIN 1 下降沿：输液传感器液体不足"));
+    }
+
+    // 2号IO（PIN 2 - 消毒液传感器）
+    if ((m_GPIOLevels & 0x2) && !(m_GPIOAPreLevels & 0x2))
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_INFO, 
+            _T("PIN 2 上升沿：消毒液传感器检测到液体"));
+    }
+    
+    if (!(m_GPIOLevels & 0x2) && (m_GPIOAPreLevels & 0x2))
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_WARNING, 
+            _T("PIN 2 下降沿：消毒液液位低"));
+    }
+
+    // 3号IO（PIN 3 - 激光测距仪传感器）
+    if ((m_GPIOLevels & 0x4) && !(m_GPIOAPreLevels & 0x4))
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_INFO, 
+            _T("PIN 3 上升沿：激光测距仪传感器检测到信号"));
+    }
+    
+    if (!(m_GPIOLevels & 0x4) && (m_GPIOAPreLevels & 0x4))
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_WARNING, 
+            _T("PIN 3 下降沿：激光测距仪传感器信号丢失"));
+    }
+
+    // 4号IO（PIN 4 - 保留）
+    if ((m_GPIOLevels & 0x8) && !(m_GPIOAPreLevels & 0x8))
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO输入"), LOG_INFO, 
+            _T("PIN 4 上升沿检测"));
+    }
+
+    // 设置GPIO输出（5-8号端口）
+    if (!m_pfnBPI_GPIO_SetPinLevel)
+        return;
+        
+    // PIN 5 - 运动指示灯（暂不使用，保持低电平）
+    m_pfnBPI_GPIO_SetPinLevel(5, 0);
+
+    // PIN 6 - 消毒液开关
+    m_pfnBPI_GPIO_SetPinLevel(6, m_bDisinfectSwitchOpen ? 1 : 0);
+
+    // PIN 7 - 输液开关
+    m_pfnBPI_GPIO_SetPinLevel(7, m_bInfusionSwitchOpen ? 1 : 0);
+
+    // PIN 8 - 激光测距仪电源
+    m_pfnBPI_GPIO_SetPinLevel(8, m_bLaserSwitchOpen ? 1 : 0);
+
+    // 保存当前输入状态，用于下次边沿检测
+    m_GPIOAPreLevels = m_GPIOLevels;
+}
+
+void CIOController::Shutdown()
+{
+    if (!m_GPIOOpen)
+    {
+        return;
+    }
+    
+    // 关闭所有输出
+    if (m_pfnBPI_GPIO_SetLevels)
+    {
+        BYTE levels = 0x00;
+        m_pfnBPI_GPIO_SetLevels(&levels, 1);
+    }
+    
+    // 关闭GPIO
+    if (m_pfnBPI_GPIO_Deinit)
+    {
+        m_pfnBPI_GPIO_Deinit();
+    }
+    
+    if (m_pfnBPI_Deinit)
+    {
+        m_pfnBPI_Deinit();
+    }
+    
+    m_GPIOOpen = FALSE;
+    m_bInfusionSwitchOpen = FALSE;
+    m_bDisinfectSwitchOpen = FALSE;
+    m_bLaserSwitchOpen = FALSE;
+    
+    // 卸载DLL
+    UnloadBpiDll();
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_INFO, _T("GPIO已关闭"));
+}
+
+// 业务层封装方法
+BOOL CIOController::OpenInfusionSwitch()
+{
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, 
+        _T(">>> OpenInfusionSwitch 被调用"));
+    
+    CString strDebug;
+    strDebug.Format(_T(">>> 检查状态: m_GPIOOpen=%d, pfnSetPinLevel=%p"), 
+        m_GPIOOpen, m_pfnBPI_GPIO_SetPinLevel);
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strDebug);
+    
+    if (!m_GPIOOpen || !m_pfnBPI_GPIO_SetPinLevel)
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_ERROR, 
+            _T(">>> 条件检查失败，无法执行"));
+        return FALSE;
+    }
+    
+    m_bInfusionSwitchOpen = TRUE;
+    int result = m_pfnBPI_GPIO_SetPinLevel(7, 1);  // PIN 7 - 输液开关
+    
+    strDebug.Format(_T(">>> BPI_GPIO_SetPinLevel(7, 1) 返回值: %d"), result);
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strDebug);
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO输出"), LOG_INFO, 
+        _T("PIN 7 输液开关已打开"));
+    
+    return TRUE;
+}
+
+BOOL CIOController::CloseInfusionSwitch()
+{
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, 
+        _T(">>> CloseInfusionSwitch 被调用"));
+    
+    if (!m_GPIOOpen || !m_pfnBPI_GPIO_SetPinLevel)
+    {
+        CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_ERROR, 
+            _T(">>> 条件检查失败，无法执行"));
+        return FALSE;
+    }
+    
+    m_bInfusionSwitchOpen = FALSE;
+    int result = m_pfnBPI_GPIO_SetPinLevel(7, 0);  // PIN 7 - 输液开关
+    
+    CString strDebug;
+    strDebug.Format(_T(">>> BPI_GPIO_SetPinLevel(7, 0) 返回值: %d"), result);
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strDebug);
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO输出"), LOG_INFO, 
+        _T("PIN 7 输液开关已关闭"));
+    
+    return TRUE;
+}
+
+BOOL CIOController::OpenDisinfectSwitch()
+{
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, 
+        _T(">>> OpenDisinfectSwitch 被调用"));
+    
+    if (!m_GPIOOpen || !m_pfnBPI_GPIO_SetPinLevel)
+    {
+        return FALSE;
+    }
+    
+    m_bDisinfectSwitchOpen = TRUE;
+    int result = m_pfnBPI_GPIO_SetPinLevel(6, 1);
+    
+    CString strDebug;
+    strDebug.Format(_T(">>> BPI_GPIO_SetPinLevel(6, 1) 返回值: %d"), result);
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strDebug);
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO输出"), LOG_INFO, 
+        _T("PIN 6 消毒液开关已打开"));
+    
+    return TRUE;
+}
+
+BOOL CIOController::CloseDisinfectSwitch()
+{
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, 
+        _T(">>> CloseDisinfectSwitch 被调用"));
+    
+    if (!m_GPIOOpen || !m_pfnBPI_GPIO_SetPinLevel)
+    {
+        return FALSE;
+    }
+    
+    m_bDisinfectSwitchOpen = FALSE;
+    int result = m_pfnBPI_GPIO_SetPinLevel(6, 0);
+    
+    CString strDebug;
+    strDebug.Format(_T(">>> BPI_GPIO_SetPinLevel(6, 0) 返回值: %d"), result);
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strDebug);
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO输出"), LOG_INFO, 
+        _T("PIN 6 消毒液开关已关闭"));
+    
+    return TRUE;
+}
+
+BOOL CIOController::OpenLaserSwitch()
+{
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, 
+        _T(">>> OpenLaserSwitch 被调用"));
+    
+    if (!m_GPIOOpen || !m_pfnBPI_GPIO_SetPinLevel)
+    {
+        return FALSE;
+    }
+    
+    m_bLaserSwitchOpen = TRUE;
+    int result = m_pfnBPI_GPIO_SetPinLevel(8, 1);  // PIN 8 - 激光测距仪
+    
+    CString strDebug;
+    strDebug.Format(_T(">>> BPI_GPIO_SetPinLevel(8, 1) 返回值: %d"), result);
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strDebug);
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO输出"), LOG_INFO, 
+        _T("PIN 8 激光测距仪已打开"));
+    
+    return TRUE;
+}
+
+BOOL CIOController::CloseLaserSwitch()
+{
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, 
+        _T(">>> CloseLaserSwitch 被调用"));
+    
+    if (!m_GPIOOpen || !m_pfnBPI_GPIO_SetPinLevel)
+    {
+        return FALSE;
+    }
+    
+    m_bLaserSwitchOpen = FALSE;
+    int result = m_pfnBPI_GPIO_SetPinLevel(8, 0);  // PIN 8 - 激光测距仪
+    
+    CString strDebug;
+    strDebug.Format(_T(">>> BPI_GPIO_SetPinLevel(8, 0) 返回值: %d"), result);
+    CLogManager::GetInstance().AddLog(_T("GPIO调试"), LOG_INFO, strDebug);
+    
+    CLogManager::GetInstance().AddLog(_T("GPIO输出"), LOG_INFO, 
+        _T("PIN 8 激光测距仪已关闭"));
+    
+    return TRUE;
+}
+
+BOOL CIOController::GetInfusionSensorState()
+{
+    if (!m_GPIOOpen)
+    {
+        return FALSE;
+    }
+    
+    // 读取PIN 1的状态（bit 0）
+    return (m_GPIOLevels & 0x01) != 0;
+}
+
+BOOL CIOController::GetDisinfectSensorState()
+{
+    if (!m_GPIOOpen)
+    {
+        return FALSE;
+    }
+    
+    // 读取PIN 2的状态（bit 1）
+    return (m_GPIOLevels & 0x02) != 0;
+}
+
+BOOL CIOController::GetLaserSensorState()
+{
+    if (!m_GPIOOpen)
+    {
+        return FALSE;
+    }
+    
+    // 读取PIN 3的状态（bit 2）
+    return (m_GPIOLevels & 0x04) != 0;
+}
+
+CString CIOController::GetHardwareStateText() const
+{
+    if (m_GPIOOpen)
+    {
+        return _T("已连接（GPIO）");
+    }
+    else
+    {
+        return _T("未连接");
+    }
+}

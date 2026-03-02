@@ -1,0 +1,596 @@
+﻿#include "pch.h"
+#include "ProcedureController.h"
+#include "LogManager.h"
+#include <process.h>
+
+CProcedureController::CProcedureController()
+{
+	// 初始化硬件接口为空
+	m_pRobotArm = nullptr;
+	m_pSerial232 = nullptr;
+	m_pSerial485 = nullptr;
+	m_pIOController = nullptr;
+	m_pVision = nullptr;
+	
+	// 初始化状态
+	m_state = PROC_STATE_IDLE;
+	m_nCurrentStep = 0;
+	
+	// 初始化穿刺点
+	m_puncturePoint.X = 0;
+	m_puncturePoint.Y = 0;
+	m_puncturePoint.Z = 0;
+	
+	// 初始化回调函数
+	m_stateCallback = nullptr;
+	m_stateCallbackUserData = nullptr;
+	m_stepCallback = nullptr;
+	m_stepCallbackUserData = nullptr;
+	
+	// 初始化线程相关
+	m_hThread = NULL;
+	m_bThreadRunning = FALSE;
+	m_bStopRequest = FALSE;
+	m_bPauseRequest = FALSE;
+	
+	// 初始化临界区
+	InitializeCriticalSection(&m_cs);
+}
+
+CProcedureController::~CProcedureController()
+{
+	// 停止线程
+	if (m_hThread)
+	{
+		m_bStopRequest = TRUE;
+		WaitForSingleObject(m_hThread, 5000);  // 等待5秒
+		CloseHandle(m_hThread);
+		m_hThread = NULL;
+	}
+	
+	// 删除临界区
+	DeleteCriticalSection(&m_cs);
+}
+
+// ========== 初始化 ==========
+
+void CProcedureController::SetRobotArm(CRobotArmController* pRobotArm)
+{
+	m_pRobotArm = pRobotArm;
+}
+
+void CProcedureController::SetSerial232(CSerialPort* pSerial232)
+{
+	m_pSerial232 = pSerial232;
+}
+
+void CProcedureController::SetSerial485(CSerialPort* pSerial485)
+{
+	m_pSerial485 = pSerial485;
+}
+
+void CProcedureController::SetIOController(CIOController* pIOController)
+{
+	m_pIOController = pIOController;
+}
+
+void CProcedureController::SetVisionSystem(IVisionSystem* pVision)
+{
+	m_pVision = pVision;
+}
+
+void CProcedureController::SetParams(const ProcedureParams& params)
+{
+	EnterCriticalSection(&m_cs);
+	m_params = params;
+	LeaveCriticalSection(&m_cs);
+}
+
+// ========== 流程控制 ==========
+
+BOOL CProcedureController::StartProcedure()
+{
+	// 检查是否已在运行
+	if (m_state == STATE_RUNNING)
+	{
+		LogWarning(_T("流程已在运行中"));
+		return FALSE;
+	}
+	
+	// 检查硬件准备状态
+	if (!CheckHardwareReady())
+	{
+		LogError(_T("硬件未就绪，无法启动流程"));
+		return FALSE;
+	}
+	
+	// 验证参数
+	if (!m_params.Validate())
+	{
+		LogError(_T("流程参数无效"));
+		return FALSE;
+	}
+	
+	// 停止旧线程（如果存在）
+	if (m_hThread)
+	{
+		m_bStopRequest = TRUE;
+		WaitForSingleObject(m_hThread, 3000);
+		CloseHandle(m_hThread);
+		m_hThread = NULL;
+	}
+	
+	// 重置状态
+	m_bStopRequest = FALSE;
+	m_bPauseRequest = FALSE;
+	m_nCurrentStep = 0;
+	
+	// 启动线程执行流程
+	m_hThread = (HANDLE)_beginthreadex(NULL, 0, ThreadFunc, this, 0, NULL);
+	if (!m_hThread)
+	{
+		LogError(_T("启动流程线程失败"));
+		return FALSE;
+	}
+	
+	NotifyStateChange(STATE_RUNNING);
+	LogInfo(_T("========== 开始执行穿刺流程 =========="));
+	
+	return TRUE;
+}
+
+void CProcedureController::StopProcedure()
+{
+	if (m_state != STATE_RUNNING && m_state != STATE_PAUSED)
+	{
+		return;
+	}
+	
+	LogWarning(_T("用户手动停止流程"));
+	m_bStopRequest = TRUE;
+	m_bPauseRequest = FALSE;  // 取消暂停
+	
+	// 等待线程结束
+	if (m_hThread)
+	{
+		WaitForSingleObject(m_hThread, 3000);
+	}
+	
+	NotifyStateChange(STATE_STOPPED);
+}
+
+void CProcedureController::PauseProcedure()
+{
+	if (m_state != STATE_RUNNING)
+	{
+		return;
+	}
+	
+	LogInfo(_T("流程已暂停"));
+	m_bPauseRequest = TRUE;
+	NotifyStateChange(STATE_PAUSED);
+}
+
+void CProcedureController::ResumeProcedure()
+{
+	if (m_state != STATE_PAUSED)
+	{
+		return;
+	}
+	
+	LogInfo(_T("流程已恢复"));
+	m_bPauseRequest = FALSE;
+	NotifyStateChange(STATE_RUNNING);
+}
+
+void CProcedureController::EmergencyStop()
+{
+	LogError(_T("!!! 紧急停止 !!!"));
+	
+	// 立即停止所有设备
+	if (m_pRobotArm && m_pRobotArm->IsConnected())
+	{
+		m_pRobotArm->EmergencyStop();
+	}
+	
+	if (m_pIOController && m_pIOController->IsInitialized())
+	{
+		m_pIOController->CloseInfusionSwitch();
+		m_pIOController->CloseDisinfectSwitch();
+		m_pIOController->CloseLaserSwitch();
+	}
+	
+	// 停止线程
+	m_bStopRequest = TRUE;
+	
+	NotifyStateChange(STATE_ERROR);
+}
+
+// ========== 单步执行 ==========
+
+BOOL CProcedureController::ExecuteStep(int stepNumber)
+{
+	if (m_state == STATE_RUNNING)
+	{
+		LogWarning(_T("流程运行中，无法单步执行"));
+		return FALSE;
+	}
+	
+	if (stepNumber < 1 || stepNumber > 7)
+	{
+		LogError(_T("步骤编号无效：%d"), stepNumber);
+		return FALSE;
+	}
+	
+	LogInfo(_T("===== 单步执行：步骤%d ====="), stepNumber);
+	
+	BOOL bResult = FALSE;
+	switch (stepNumber)
+	{
+	case 1: bResult = ExecuteStep1_VisionLocate(); break;
+	case 2: bResult = ExecuteStep2_LaserCoarseAdjust(); break;
+	case 3: bResult = ExecuteStep3_DetectPuncturePoint(); break;
+	case 4: bResult = ExecuteStep4_PreciseAlignment(); break;
+	case 5: bResult = ExecuteStep5_Disinfection(); break;
+	case 6: bResult = ExecuteStep6_Puncture(); break;
+	case 7: bResult = ExecuteStep7_Infusion(); break;
+	}
+	
+	if (bResult)
+	{
+		LogInfo(_T("步骤%d 执行成功"), stepNumber);
+	}
+	else
+	{
+		LogError(_T("步骤%d 执行失败"), stepNumber);
+	}
+	
+	NotifyStepChange(stepNumber, bResult);
+	
+	return bResult;
+}
+
+// ========== 状态查询 ==========
+
+float CProcedureController::GetProgress() const
+{
+	if (m_nCurrentStep == 0)
+	{
+		return 0.0f;
+	}
+	
+	// 计算进度（0~100）
+	return (m_nCurrentStep * 100.0f) / 7.0f;
+}
+
+CString CProcedureController::GetStepName(int stepNumber) const
+{
+	switch (stepNumber)
+	{
+	case 1: return _T("视觉定位");
+	case 2: return _T("激光粗调");
+	case 3: return _T("识别穿刺点");
+	case 4: return _T("精准对位");
+	case 5: return _T("消毒准备");
+	case 6: return _T("穿刺执行");
+	case 7: return _T("输液启动");
+	default: return _T("未知步骤");
+	}
+}
+
+// ========== 回调设置 ==========
+
+void CProcedureController::SetStateChangeCallback(StateChangeCallback callback, void* pUserData)
+{
+	m_stateCallback = callback;
+	m_stateCallbackUserData = pUserData;
+}
+
+void CProcedureController::SetStepChangeCallback(StepChangeCallback callback, void* pUserData)
+{
+	m_stepCallback = callback;
+	m_stepCallbackUserData = pUserData;
+}
+
+// ========== 辅助函数 ==========
+
+float CProcedureController::GetLaserDistance()
+{
+	// TODO: 从485串口读取激光测距仪数据
+	// 这里暂时返回模拟值
+	// 实际实现需要解析串口数据
+	
+	if (!m_pSerial485 || !m_pSerial485->IsOpen())
+	{
+		return -1.0f;  // 无效值
+	}
+	
+	// 暂时返回100mm（待实现真实读取逻辑）
+	return 100.0f;
+}
+
+BOOL CProcedureController::WaitForMotorComplete(int nTimeoutMs)
+{
+	// TODO: 监听232串口，等待电机完成信号
+	// 这里暂时使用延时模拟
+	
+	DWORD dwStart = GetTickCount();
+	while ((GetTickCount() - dwStart) < (DWORD)nTimeoutMs)
+	{
+		// 检查停止请求
+		if (m_bStopRequest)
+		{
+			return FALSE;
+		}
+		
+		// TODO: 检查232串口是否收到完成信号
+		
+		Sleep(100);
+	}
+	
+	// 超时
+	return FALSE;
+}
+
+BOOL CProcedureController::UseManualPosition()
+{
+	// 视觉系统未启用，使用手动设定的预设位置
+	LogWarning(_T("视觉系统未启用，使用预设坐标"));
+	
+	// 使用当前位置或预设坐标
+	if (m_pRobotArm && m_pRobotArm->IsConnected())
+	{
+		// 使用当前位置
+		return TRUE;
+	}
+	
+	return FALSE;
+}
+
+BOOL CProcedureController::CheckHardwareReady()
+{
+	// 检查机械臂
+	if (!m_pRobotArm || !m_pRobotArm->IsConnected())
+	{
+		LogError(_T("机械臂未连接"));
+		return FALSE;
+	}
+	
+	// 检查232串口（电机）
+	if (!m_pSerial232 || !m_pSerial232->IsOpen())
+	{
+		LogError(_T("232串口未打开"));
+		return FALSE;
+	}
+	
+	// 检查485串口（激光测距仪）
+	if (!m_pSerial485 || !m_pSerial485->IsOpen())
+	{
+		LogError(_T("485串口未打开"));
+		return FALSE;
+	}
+	
+	// 检查I/O控制器
+	if (!m_pIOController || !m_pIOController->IsInitialized())
+	{
+		LogError(_T("I/O控制器未初始化"));
+		return FALSE;
+	}
+	
+	// 视觉系统是可选的
+	if (m_params.bEnableVision)
+	{
+		if (!m_pVision || !m_pVision->IsConnected())
+		{
+			LogWarning(_T("视觉系统已启用但未连接，将使用预设坐标"));
+		}
+	}
+	
+	return TRUE;
+}
+
+void CProcedureController::Rollback()
+{
+	LogWarning(_T("执行异常回滚..."));
+	
+	// 关闭所有I/O开关
+	if (m_pIOController && m_pIOController->IsInitialized())
+	{
+		m_pIOController->CloseInfusionSwitch();
+		m_pIOController->CloseDisinfectSwitch();
+		m_pIOController->CloseLaserSwitch();
+	}
+	
+	// 停止机械臂
+	if (m_pRobotArm && m_pRobotArm->IsConnected())
+	{
+		m_pRobotArm->Stop();
+	}
+}
+
+// ========== 日志输出 ==========
+
+void CProcedureController::LogInfo(LPCTSTR format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	
+	CString strMsg;
+	strMsg.FormatV(format, args);
+	
+	CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_INFO, strMsg);
+	
+	va_end(args);
+}
+
+void CProcedureController::LogWarning(LPCTSTR format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	
+	CString strMsg;
+	strMsg.FormatV(format, args);
+	
+	CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_WARNING, strMsg);
+	
+	va_end(args);
+}
+
+void CProcedureController::LogError(LPCTSTR format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	
+	CString strMsg;
+	strMsg.FormatV(format, args);
+	
+	CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_ERROR, strMsg);
+	
+	va_end(args);
+}
+
+// ========== 状态通知 ==========
+
+void CProcedureController::NotifyStateChange(ProcedureState newState)
+{
+	EnterCriticalSection(&m_cs);
+	m_state = newState;
+	LeaveCriticalSection(&m_cs);
+	
+	if (m_stateCallback)
+	{
+		m_stateCallback(newState, m_stateCallbackUserData);
+	}
+}
+
+void CProcedureController::NotifyStepChange(int stepNumber, BOOL bSuccess)
+{
+	if (m_stepCallback)
+	{
+		m_stepCallback(stepNumber, bSuccess, m_stepCallbackUserData);
+	}
+}
+
+// ========== 线程函数 ==========
+
+UINT CProcedureController::ThreadFunc(LPVOID pParam)
+{
+	CProcedureController* pThis = (CProcedureController*)pParam;
+	pThis->ThreadProcedure();
+	return 0;
+}
+
+void CProcedureController::ThreadProcedure()
+{
+	m_bThreadRunning = TRUE;
+	
+	// 执行7步流程
+	for (int step = 1; step <= 7; step++)
+	{
+		// 检查停止请求
+		if (m_bStopRequest)
+		{
+			LogWarning(_T("流程已停止"));
+			Rollback();
+			NotifyStateChange(STATE_STOPPED);
+			m_bThreadRunning = FALSE;
+			return;
+		}
+		
+		// 检查暂停请求
+		while (m_bPauseRequest)
+		{
+			Sleep(100);
+			
+			// 暂停期间也要检查停止请求
+			if (m_bStopRequest)
+			{
+				LogWarning(_T("流程已停止（从暂停恢复）"));
+				Rollback();
+				NotifyStateChange(STATE_STOPPED);
+				m_bThreadRunning = FALSE;
+				return;
+			}
+		}
+		
+		// 更新当前步骤
+		m_nCurrentStep = step;
+		LogInfo(_T("开始执行步骤%d：%s"), step, GetStepName(step));
+		
+		// 执行当前步骤
+		BOOL bSuccess = ExecuteStep(step);
+		
+		// 通知步骤变化
+		NotifyStepChange(step, bSuccess);
+		
+		// 检查执行结果
+		if (!bSuccess)
+		{
+			LogError(_T("步骤%d执行失败，流程中止"), step);
+			Rollback();
+			NotifyStateChange(STATE_ERROR);
+			m_bThreadRunning = FALSE;
+			return;
+		}
+		
+		// 短暂延时
+		Sleep(200);
+	}
+	
+	// 全部成功
+	LogInfo(_T("========== 流程执行完成 =========="));
+	NotifyStateChange(STATE_COMPLETED);
+	m_bThreadRunning = FALSE;
+}
+
+// ========== 7步流程实现（后续完善）==========
+
+BOOL CProcedureController::ExecuteStep1_VisionLocate()
+{
+	// TODO: 实现步骤1（视觉定位）
+	// 暂时返回成功
+	LogInfo(_T("步骤1：视觉定位（待实现）"));
+	return TRUE;
+}
+
+BOOL CProcedureController::ExecuteStep2_LaserCoarseAdjust()
+{
+	// TODO: 实现步骤2（激光粗调）
+	LogInfo(_T("步骤2：激光粗调（待实现）"));
+	return TRUE;
+}
+
+BOOL CProcedureController::ExecuteStep3_DetectPuncturePoint()
+{
+	// TODO: 实现步骤3（识别穿刺点）
+	LogInfo(_T("步骤3：识别穿刺点（待实现）"));
+	return TRUE;
+}
+
+BOOL CProcedureController::ExecuteStep4_PreciseAlignment()
+{
+	// TODO: 实现步骤4（精准对位）
+	LogInfo(_T("步骤4：精准对位（待实现）"));
+	return TRUE;
+}
+
+BOOL CProcedureController::ExecuteStep5_Disinfection()
+{
+	// TODO: 实现步骤5（消毒）
+	LogInfo(_T("步骤5：消毒准备（待实现）"));
+	return TRUE;
+}
+
+BOOL CProcedureController::ExecuteStep6_Puncture()
+{
+	// TODO: 实现步骤6（穿刺）
+	LogInfo(_T("步骤6：穿刺执行（待实现）"));
+	return TRUE;
+}
+
+BOOL CProcedureController::ExecuteStep7_Infusion()
+{
+	// TODO: 实现步骤7（输液）
+	LogInfo(_T("步骤7：输液启动（待实现）"));
+	return TRUE;
+}

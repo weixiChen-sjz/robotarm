@@ -1,0 +1,42 @@
+﻿// 这是需要更新的三个函数
+
+void CMFCApplication1Dlg::OnTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == TIMER_UPDATE_STATUS)
+	{
+		// 更新状态显示
+		UpdateRobotArmStatus();
+		UpdateIOStatus();
+		
+		// GPIO读写处理（完全按照原程序的GPIO_ReadWrite方式）
+		m_ioController.ProcessGPIO();
+	}
+	else if (nIDEvent == TIMER_RECEIVE_DATA)
+	{
+		// 接收串口数据 - 更新为使用List控件ID
+		ReceiveSerialData(m_serial232, IDC_LIST_RECEIVE232);
+		ReceiveSerialData(m_serial485, IDC_LIST_RECEIVE485);
+	}
+	
+	CDialogEx::OnTimer(nIDEvent);
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonClear232()
+{
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_RECEIVE232);
+	if (pList)
+	{
+		pList->DeleteAllItems();
+	}
+	m_serial232.ClearBuffer();
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonClear485()
+{
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_RECEIVE485);
+	if (pList)
+	{
+		pList->DeleteAllItems();
+	}
+	m_serial485.ClearBuffer();
+}

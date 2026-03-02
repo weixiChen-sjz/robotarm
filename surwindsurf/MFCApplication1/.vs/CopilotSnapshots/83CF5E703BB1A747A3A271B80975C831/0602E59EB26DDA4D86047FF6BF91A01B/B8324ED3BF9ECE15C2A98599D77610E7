@@ -1,0 +1,79 @@
+﻿#pragma once
+#include "SerialPort.h"
+#include <string>
+
+// 机械臂状态
+enum RobotArmState
+{
+    STATE_DISCONNECTED = 0,
+    STATE_CONNECTED,
+    STATE_INITIALIZED,
+    STATE_MOVING,
+    STATE_ERROR
+};
+
+// 机械臂坐标
+struct RobotArmPosition
+{
+    double X;
+    double Y;
+    double Z;
+    
+    RobotArmPosition() : X(0), Y(0), Z(0) {}
+    RobotArmPosition(double x, double y, double z) : X(x), Y(y), Z(z) {}
+};
+
+class CRobotArmController
+{
+public:
+    CRobotArmController();
+    ~CRobotArmController();
+
+    // 连接机械臂
+    BOOL Connect(int nPort, int nBaudRate = 9600);
+    
+    // 断开连接
+    void Disconnect();
+    
+    // 初始化机械臂
+    BOOL Initialize();
+    
+    // 归零
+    BOOL GoHome();
+    
+    // 移动到指定位置
+    BOOL MoveTo(const RobotArmPosition& pos, int nSpeed = 50);
+    
+    // 停止
+    BOOL Stop();
+    
+    // 急停
+    BOOL EmergencyStop();
+    
+    // 获取当前位置
+    RobotArmPosition GetCurrentPosition() const { return m_currentPos; }
+    
+    // 获取当前状态
+    RobotArmState GetState() const { return m_state; }
+    
+    // 设置速度 (0-100)
+    void SetSpeed(int nSpeed);
+    
+    // 获取速度
+    int GetSpeed() const { return m_nSpeed; }
+    
+    // 检查是否连接
+    BOOL IsConnected() const;
+
+private:
+    CSerialPort m_serialPort;         // 串口对象
+    RobotArmState m_state;            // 当前状态
+    RobotArmPosition m_currentPos;    // 当前位置
+    int m_nSpeed;                     // 当前速度
+    
+    // 发送命令并等待响应
+    BOOL SendCommand(const CString& strCmd, CString& strResponse, DWORD dwTimeout = 1000);
+    
+    // 解析位置响应
+    BOOL ParsePosition(const CString& strResponse, RobotArmPosition& pos);
+};

@@ -1,0 +1,87 @@
+#pragma once
+#include <Windows.h>
+#include <vector>
+#include <fstream>
+
+// 日志级别
+enum LogLevel
+{
+    LOG_INFO = 0,
+    LOG_WARNING,
+    LOG_ERROR
+};
+
+// 日志条目
+struct LogEntry
+{
+    CString strTime;        // 时间戳
+    CString strModule;      // 模块名称
+    LogLevel level;         // 日志级别
+    CString strMessage;     // 消息内容
+    
+    LogEntry()
+        : level(LOG_INFO)
+    {}
+};
+
+class CLogManager
+{
+public:
+    static CLogManager& GetInstance();
+    
+    // 添加日志
+    void AddLog(const CString& strModule, LogLevel level, const CString& strMessage);
+    
+    // 获取所有日志
+    const std::vector<LogEntry>& GetAllLogs() const { return m_logs; }
+    
+    // 清空日志
+    void ClearLogs();
+    
+    // 导出日志到文件
+    BOOL ExportToFile(const CString& strFilePath);
+    
+    // 设置日志回调（用于通知UI更新）
+    typedef void (*LogCallback)(const LogEntry& entry, void* pUserData);
+
+	// 订阅日志（支持多个订阅者）
+	BOOL Subscribe(LogCallback callback, void* pUserData);
+	void Unsubscribe(LogCallback callback, void* pUserData);
+
+	// 兼容旧接口：设置单一回调（会替换同一callback+userData的订阅）
+	void SetLogCallback(LogCallback callback, void* pUserData);
+
+private:
+    CLogManager();
+    ~CLogManager();
+    
+    CLogManager(const CLogManager&) = delete;
+    CLogManager& operator=(const CLogManager&) = delete;
+    
+    std::vector<LogEntry> m_logs;
+    CRITICAL_SECTION m_cs;
+
+	struct CallbackItem
+	{
+		LogCallback callback;
+		void* pUserData;
+	};
+	std::vector<CallbackItem> m_callbacks;
+    
+    // 自动保存日志到文件的功能
+    BOOL m_bEnableFileLog;           // 是否启用文件日志
+    CString m_strLogFilePath;        // 日志文件路径
+    CRITICAL_SECTION m_csFile;       // 文件写入临界区
+    
+    // 获取当前时间字符串
+    CString GetCurrentTimeString();
+    
+    // 获取日志级别字符串
+    CString GetLevelString(LogLevel level);
+    
+    // 写入日志到文件
+    void WriteToFile(const LogEntry& entry);
+    
+    // 初始化日志文件（按日期生成）
+    void InitializeLogFile();
+};

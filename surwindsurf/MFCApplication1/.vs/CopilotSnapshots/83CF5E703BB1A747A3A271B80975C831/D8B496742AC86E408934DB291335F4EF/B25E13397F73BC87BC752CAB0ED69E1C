@@ -1,0 +1,595 @@
+﻿#include "pch.h"
+#include "MFCApplication1.h"
+#include "ProcedureDlg.h"
+#include "MFCApplication1Dlg.h"
+#include "LogManager.h"
+#include "MockVisionSystem.h"
+#include "afxdialogex.h"
+
+// CProcedureDlg 对话框
+
+IMPLEMENT_DYNAMIC(CProcedureDlg, CDialogEx)
+
+CProcedureDlg::CProcedureDlg(CWnd* pParent /*=nullptr*/)
+	: CDialogEx(IDD_PROCEDURE_DIALOG, pParent)
+	, m_bProcedureRunning(FALSE)
+	, m_nCurrentStep(0)
+	, m_fPunctureDepth(50.0f)
+	, m_fSafeHeight(100.0f)
+	, m_fCoarsePrecision(2.0f)
+	, m_fFinePrecision(0.2f)
+	, m_fDisinfectTime(2.0f)
+	, m_bInitialized(FALSE)
+{
+	// 初始化步骤开始时间
+	memset(m_dwStepStartTime, 0, sizeof(m_dwStepStartTime));
+}
+
+CProcedureDlg::~CProcedureDlg()
+{
+}
+
+void CProcedureDlg::DoDataExchange(CDataExchange* pDX)
+{
+	CDialogEx::DoDataExchange(pDX);
+}
+
+
+BEGIN_MESSAGE_MAP(CProcedureDlg, CDialogEx)
+	ON_WM_TIMER()
+	ON_WM_DESTROY()
+	ON_BN_CLICKED(IDC_BUTTON_START_PROCEDURE, &CProcedureDlg::OnBnClickedButtonStartProcedure)
+	ON_BN_CLICKED(IDC_BUTTON_STOP_PROCEDURE, &CProcedureDlg::OnBnClickedButtonStopProcedure)
+	ON_BN_CLICKED(IDC_BUTTON_PAUSE_PROCEDURE, &CProcedureDlg::OnBnClickedButtonPauseProcedure)
+	ON_BN_CLICKED(IDC_BUTTON_EMERGENCY_STOP, &CProcedureDlg::OnBnClickedButtonEmergencyStop)
+	ON_BN_CLICKED(IDC_BUTTON_SAVE_PARAMS, &CProcedureDlg::OnBnClickedButtonSaveParams)
+	ON_BN_CLICKED(IDC_BUTTON_RESET_PARAMS, &CProcedureDlg::OnBnClickedButtonResetParams)
+	ON_BN_CLICKED(IDC_BUTTON_IMPORT_PARAMS, &CProcedureDlg::OnBnClickedButtonImportParams)
+	ON_BN_CLICKED(IDC_BUTTON_EXPORT_PARAMS, &CProcedureDlg::OnBnClickedButtonExportParams)
+	ON_BN_CLICKED(IDC_BUTTON_STEP1_TEST, &CProcedureDlg::OnBnClickedButtonStep1Test)
+	ON_BN_CLICKED(IDC_BUTTON_STEP2_TEST, &CProcedureDlg::OnBnClickedButtonStep2Test)
+	ON_BN_CLICKED(IDC_BUTTON_STEP3_TEST, &CProcedureDlg::OnBnClickedButtonStep3Test)
+	ON_BN_CLICKED(IDC_BUTTON_STEP4_TEST, &CProcedureDlg::OnBnClickedButtonStep4Test)
+	ON_BN_CLICKED(IDC_BUTTON_STEP5_TEST, &CProcedureDlg::OnBnClickedButtonStep5Test)
+	ON_BN_CLICKED(IDC_BUTTON_STEP6_TEST, &CProcedureDlg::OnBnClickedButtonStep6Test)
+	ON_BN_CLICKED(IDC_BUTTON_STEP7_TEST, &CProcedureDlg::OnBnClickedButtonStep7Test)
+	ON_BN_CLICKED(IDC_CHECK_ENABLE_VISION, &CProcedureDlg::OnBnClickedCheckEnableVision)
+END_MESSAGE_MAP()
+
+
+// CProcedureDlg 消息处理程序
+
+BOOL CProcedureDlg::OnInitDialog()
+{
+	CDialogEx::OnInitDialog();
+
+	// 初始化控件
+	InitializeControls();
+	
+	// 加载流程参数
+	LoadProcedureParams();
+	
+	// 初始化流程控制器
+	InitializeController();
+	
+	// 更新流程状态
+	UpdateProcedureStatus();
+	
+	// 启动定时器（200ms）
+	SetTimer(TIMER_UPDATE_PROCEDURE, 200, NULL);
+	
+	// 记录日志
+	CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_INFO, _T("流程控制面板已打开"));
+	
+	m_bInitialized = TRUE;
+
+	return TRUE;
+}
+
+void CProcedureDlg::OnOK()
+{
+	// 防止Enter键关闭对话框
+	// 不调用基类的OnOK()
+}
+
+void CProcedureDlg::OnCancel()
+{
+	// 检查是否正在运行
+	if (m_controller.GetState() == PROC_STATE_RUNNING)
+	{
+		if (MessageBox(_T("流程正在运行中！\n\n确认关闭流程控制面板？"), 
+			_T("确认"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+		{
+			return;
+		}
+		
+		// 停止流程
+		m_controller.StopProcedure();
+	}
+	
+	CDialogEx::OnCancel();
+}
+
+void CProcedureDlg::OnDestroy()
+{
+	// 停止定时器
+	KillTimer(TIMER_UPDATE_PROCEDURE);
+	
+	// 停止流程
+	if (m_controller.GetState() == PROC_STATE_RUNNING)
+	{
+		m_controller.StopProcedure();
+	}
+	
+	CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_INFO, _T("流程控制面板已关闭"));
+	
+	CDialogEx::OnDestroy();
+}
+
+void CProcedureDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == TIMER_UPDATE_PROCEDURE)
+	{
+		// 更新流程状态
+		UpdateProcedureStatus();
+		
+		// 更新实时数据
+		UpdateRealTimeData();
+	}
+	
+	CDialogEx::OnTimer(nIDEvent);
+}
+
+// ========== 初始化函数 ==========
+
+void CProcedureDlg::InitializeControls()
+{
+	// 初始化步骤监控列表
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_STEP_MONITOR);
+	if (pList)
+	{
+		pList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+		pList->InsertColumn(0, _T("步骤"), LVCFMT_CENTER, 60);
+		pList->InsertColumn(1, _T("名称"), LVCFMT_LEFT, 120);
+		pList->InsertColumn(2, _T("状态"), LVCFMT_CENTER, 100);
+		pList->InsertColumn(3, _T("耗时"), LVCFMT_CENTER, 80);
+		pList->InsertColumn(4, _T("备注"), LVCFMT_LEFT, 200);
+		
+		// 添加7个步骤
+		const CString stepNames[] = {
+			_T("视觉定位"),
+			_T("激光粗调"),
+			_T("识别穿刺点"),
+			_T("精准对位"),
+			_T("消毒准备"),
+			_T("穿刺执行"),
+			_T("输液启动")
+		};
+		
+		for (int i = 0; i < 7; i++)
+		{
+			CString strStep;
+			strStep.Format(_T("步骤%d"), i + 1);
+			int nIndex = pList->InsertItem(i, strStep);
+			pList->SetItemText(nIndex, 1, stepNames[i]);
+			pList->SetItemText(nIndex, 2, _T("○ 待执行"));
+			pList->SetItemText(nIndex, 3, _T("-"));
+			pList->SetItemText(nIndex, 4, _T("-"));
+		}
+	}
+	
+	// 初始化流程参数显示
+	DisplayParamsToUI();
+	
+	// 初始化流程状态显示
+	SetDlgItemText(IDC_STATIC_PROCEDURE_STATUS, _T("流程状态: ● 就绪"));
+	SetDlgItemText(IDC_STATIC_CURRENT_STEP, _T("当前步骤: 【无】"));
+	
+	// 初始化进度条
+	CProgressCtrl* pProgress = (CProgressCtrl*)GetDlgItem(IDC_PROGRESS_PROCEDURE);
+	if (pProgress)
+	{
+		pProgress->SetRange(0, 100);
+		pProgress->SetPos(0);
+	}
+	
+	// 初始化实时数据显示
+	SetDlgItemText(IDC_STATIC_LASER_DISTANCE, _T("激光距离: -- mm"));
+	SetDlgItemText(IDC_STATIC_DISTANCE_ERROR, _T("误差: -- mm"));
+	SetDlgItemText(IDC_STATIC_ROBOT_POSITION, _T("机械臂位置: X:-- Y:-- Z:--"));
+	SetDlgItemText(IDC_STATIC_VISION_COORD, _T("视觉坐标: (未启用)"));
+}
+
+void CProcedureDlg::InitializeController()
+{
+	// 获取主对话框
+	CMFCApplication1Dlg* pMainDlg = GetMainDlg();
+	if (!pMainDlg)
+	{
+		CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_ERROR, 
+			_T("无法获取主对话框指针"));
+		return;
+	}
+	
+	// 设置硬件设备接口
+	m_controller.SetRobotArm(&pMainDlg->m_robotArm);
+	m_controller.SetSerial232(&pMainDlg->m_serial232);
+	m_controller.SetSerial485(&pMainDlg->m_serial485);
+	m_controller.SetIOController(&pMainDlg->m_ioController);
+	
+	// 设置视觉系统（暂时使用模拟系统）
+	if (m_params.bEnableVision)
+	{
+		// TODO: 集成真实视觉系统后替换
+		// m_controller.SetVisionSystem(new CRealSenseVisionSystem());
+		CMockVisionSystem* pMockVision = new CMockVisionSystem();
+		m_controller.SetVisionSystem(pMockVision);
+		
+		CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_WARNING, 
+			_T("当前使用模拟视觉系统"));
+	}
+	
+	// 设置流程参数
+	m_controller.SetParams(m_params);
+	
+	// 设置回调函数
+	m_controller.SetStateChangeCallback(OnStateChanged, this);
+	m_controller.SetStepChangeCallback(OnStepChanged, this);
+	
+	CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_INFO, 
+		_T("流程控制器初始化完成"));
+}
+
+// ========== 更新函数 ==========
+
+void CProcedureDlg::UpdateProcedureStatus()
+{
+	ProcedureState state = m_controller.GetState();
+	int nCurrentStep = m_controller.GetCurrentStep();
+	
+	// 更新状态文本
+	CString strStatus;
+	switch (state)
+	{
+	case PROC_STATE_IDLE:
+		strStatus = _T("流程状态: ● 就绪");
+		break;
+	case PROC_STATE_RUNNING:
+		strStatus = _T("流程状态: ▶ 运行中");
+		break;
+	case PROC_STATE_PAUSED:
+		strStatus = _T("流程状态: ⏸ 已暂停");
+		break;
+	case PROC_STATE_STOPPED:
+		strStatus = _T("流程状态: ■ 已停止");
+		break;
+	case PROC_STATE_COMPLETED:
+		strStatus = _T("流程状态: ✓ 已完成");
+		break;
+	case PROC_STATE_ERROR:
+		strStatus = _T("流程状态: ✗ 错误");
+		break;
+	}
+	SetDlgItemText(IDC_STATIC_PROCEDURE_STATUS, strStatus);
+	
+	// 更新当前步骤
+	CString strStep;
+	if (nCurrentStep > 0 && nCurrentStep <= 7)
+	{
+		strStep.Format(_T("当前步骤: 【步骤%d - %s】"), 
+			nCurrentStep, m_controller.GetStepName(nCurrentStep));
+	}
+	else
+	{
+		strStep = _T("当前步骤: 【无】");
+	}
+	SetDlgItemText(IDC_STATIC_CURRENT_STEP, strStep);
+	
+	// 更新进度条
+	CProgressCtrl* pProgress = (CProgressCtrl*)GetDlgItem(IDC_PROGRESS_PROCEDURE);
+	if (pProgress)
+	{
+		int nProgress = (int)m_controller.GetProgress();
+		pProgress->SetPos(nProgress);
+	}
+	
+	// 更新按钮状态
+	BOOL bRunning = (state == PROC_STATE_RUNNING);
+	BOOL bPaused = (state == PROC_STATE_PAUSED);
+	
+	CWnd* pWnd;
+	pWnd = GetDlgItem(IDC_BUTTON_START_PROCEDURE);
+	if (pWnd) pWnd->EnableWindow(!bRunning && !bPaused);
+	
+	pWnd = GetDlgItem(IDC_BUTTON_STOP_PROCEDURE);
+	if (pWnd) pWnd->EnableWindow(bRunning || bPaused);
+	
+	pWnd = GetDlgItem(IDC_BUTTON_PAUSE_PROCEDURE);
+	if (pWnd)
+	{
+		pWnd->EnableWindow(bRunning || bPaused);
+		pWnd->SetWindowText(bPaused ? _T("恢复") : _T("暂停"));
+	}
+	
+	// 禁用参数编辑（运行时）
+	EnableControls(!bRunning && !bPaused);
+}
+
+void CProcedureDlg::UpdateStepMonitor(int stepNumber, CString status, CString time, CString note)
+{
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_STEP_MONITOR);
+	if (!pList || stepNumber < 1 || stepNumber > 7)
+	{
+		return;
+	}
+	
+	int nIndex = stepNumber - 1;
+	pList->SetItemText(nIndex, 2, status);
+	pList->SetItemText(nIndex, 3, time);
+	pList->SetItemText(nIndex, 4, note);
+	
+	// 自动滚动到当前步骤
+	pList->EnsureVisible(nIndex, FALSE);
+}
+
+void CProcedureDlg::UpdateRealTimeData()
+{
+	CMFCApplication1Dlg* pMainDlg = GetMainDlg();
+	if (!pMainDlg)
+	{
+		return;
+	}
+	
+	// 更新激光距离（从485串口读取）
+	if (pMainDlg->m_serial485.IsOpen())
+	{
+		// TODO: 实际读取激光距离
+		// 暂时显示模拟值
+		SetDlgItemText(IDC_STATIC_LASER_DISTANCE, _T("激光距离: 100.0 mm"));
+		SetDlgItemText(IDC_STATIC_DISTANCE_ERROR, _T("误差: 0.0 mm"));
+	}
+	else
+	{
+		SetDlgItemText(IDC_STATIC_LASER_DISTANCE, _T("激光距离: -- mm"));
+		SetDlgItemText(IDC_STATIC_DISTANCE_ERROR, _T("误差: -- mm"));
+	}
+	
+	// 更新机械臂位置
+	if (pMainDlg->m_robotArm.IsConnected())
+	{
+		RobotArmPosition pos = pMainDlg->m_robotArm.GetCurrentPosition();
+		CString strPos;
+		strPos.Format(_T("机械臂位置: X:%.2f Y:%.2f Z:%.2f"), 
+			pos.X, pos.Y, pos.Z);
+		SetDlgItemText(IDC_STATIC_ROBOT_POSITION, strPos);
+	}
+	else
+	{
+		SetDlgItemText(IDC_STATIC_ROBOT_POSITION, _T("机械臂位置: X:-- Y:-- Z:--"));
+	}
+	
+	// 更新视觉坐标
+	if (m_params.bEnableVision)
+	{
+		SetDlgItemText(IDC_STATIC_VISION_COORD, _T("视觉坐标: (模拟系统)"));
+	}
+	else
+	{
+		SetDlgItemText(IDC_STATIC_VISION_COORD, _T("视觉坐标: (未启用)"));
+	}
+}
+
+void CProcedureDlg::EnableControls(BOOL bEnable)
+{
+	// 参数输入框
+	CWnd* pWnd;
+	pWnd = GetDlgItem(IDC_EDIT_TARGET_HEIGHT);
+	if (pWnd) pWnd->EnableWindow(bEnable);
+	
+	pWnd = GetDlgItem(IDC_EDIT_COARSE_TOLERANCE);
+	if (pWnd) pWnd->EnableWindow(bEnable);
+	
+	pWnd = GetDlgItem(IDC_EDIT_FINE_TOLERANCE);
+	if (pWnd) pWnd->EnableWindow(bEnable);
+	
+	pWnd = GetDlgItem(IDC_EDIT_PUNCTURE_DEPTH);
+	if (pWnd) pWnd->EnableWindow(bEnable);
+	
+	pWnd = GetDlgItem(IDC_EDIT_DISINFECT_TIME);
+	if (pWnd) pWnd->EnableWindow(bEnable);
+	
+	pWnd = GetDlgItem(IDC_EDIT_SAFE_HEIGHT);
+	if (pWnd) pWnd->EnableWindow(bEnable);
+	
+	// 参数管理按钮
+	pWnd = GetDlgItem(IDC_BUTTON_SAVE_PARAMS);
+	if (pWnd) pWnd->EnableWindow(bEnable);
+	
+	pWnd = GetDlgItem(IDC_BUTTON_RESET_PARAMS);
+	if (pWnd) pWnd->EnableWindow(bEnable);
+	
+	pWnd = GetDlgItem(IDC_BUTTON_IMPORT_PARAMS);
+	if (pWnd) pWnd->EnableWindow(bEnable);
+	
+	pWnd = GetDlgItem(IDC_BUTTON_EXPORT_PARAMS);
+	if (pWnd) pWnd->EnableWindow(bEnable);
+	
+	// 视觉系统复选框
+	pWnd = GetDlgItem(IDC_CHECK_ENABLE_VISION);
+	if (pWnd) pWnd->EnableWindow(bEnable);
+	
+	// 单步测试按钮
+	for (int i = 1; i <= 7; i++)
+	{
+		int nID = IDC_BUTTON_STEP1_TEST + (i - 1);
+		pWnd = GetDlgItem(nID);
+		if (pWnd) pWnd->EnableWindow(bEnable);
+	}
+}
+
+CMFCApplication1Dlg* CProcedureDlg::GetMainDlg()
+{
+	return (CMFCApplication1Dlg*)GetParent();
+}
+
+// ========== 参数管理函数 ==========
+
+void CProcedureDlg::ReadParamsFromUI()
+{
+	CString strValue;
+	
+	GetDlgItemText(IDC_EDIT_TARGET_HEIGHT, strValue);
+	m_params.fTargetHeight = (float)_ttof(strValue);
+	
+	GetDlgItemText(IDC_EDIT_COARSE_TOLERANCE, strValue);
+	m_params.fCoarseTolerance = (float)_ttof(strValue);
+	
+	GetDlgItemText(IDC_EDIT_FINE_TOLERANCE, strValue);
+	m_params.fFineTolerance = (float)_ttof(strValue);
+	
+	GetDlgItemText(IDC_EDIT_PUNCTURE_DEPTH, strValue);
+	m_params.fPunctureDepth = (float)_ttof(strValue);
+	
+	GetDlgItemText(IDC_EDIT_DISINFECT_TIME, strValue);
+	m_params.fDisinfectTime = (float)_ttof(strValue);
+	
+	GetDlgItemText(IDC_EDIT_SAFE_HEIGHT, strValue);
+	m_params.fSafeHeight = (float)_ttof(strValue);
+	
+	CButton* pCheck = (CButton*)GetDlgItem(IDC_CHECK_ENABLE_VISION);
+	m_params.bEnableVision = pCheck ? pCheck->GetCheck() : FALSE;
+}
+
+void CProcedureDlg::DisplayParamsToUI()
+{
+	CString strValue;
+	
+	strValue.Format(_T("%.1f"), m_params.fTargetHeight);
+	SetDlgItemText(IDC_EDIT_TARGET_HEIGHT, strValue);
+	
+	strValue.Format(_T("%.1f"), m_params.fCoarseTolerance);
+	SetDlgItemText(IDC_EDIT_COARSE_TOLERANCE, strValue);
+	
+	strValue.Format(_T("%.1f"), m_params.fFineTolerance);
+	SetDlgItemText(IDC_EDIT_FINE_TOLERANCE, strValue);
+	
+	strValue.Format(_T("%.1f"), m_params.fPunctureDepth);
+	SetDlgItemText(IDC_EDIT_PUNCTURE_DEPTH, strValue);
+	
+	strValue.Format(_T("%.1f"), m_params.fDisinfectTime);
+	SetDlgItemText(IDC_EDIT_DISINFECT_TIME, strValue);
+	
+	strValue.Format(_T("%.1f"), m_params.fSafeHeight);
+	SetDlgItemText(IDC_EDIT_SAFE_HEIGHT, strValue);
+	
+	CButton* pCheck = (CButton*)GetDlgItem(IDC_CHECK_ENABLE_VISION);
+	if (pCheck)
+	{
+		pCheck->SetCheck(m_params.bEnableVision);
+	}
+}
+
+void CProcedureDlg::LoadProcedureParams()
+{
+	// TODO: 从配置文件加载参数
+	// 暂时使用默认值（已在ProcedureParams构造函数中设置）
+}
+
+void CProcedureDlg::SaveProcedureParams()
+{
+	// 从界面读取参数
+	ReadParamsFromUI();
+	
+	// 验证参数
+	if (!m_params.Validate())
+	{
+		MessageBox(_T("参数无效！请检查输入值。"), _T("错误"), MB_OK | MB_ICONERROR);
+		return;
+	}
+	
+	// TODO: 保存到配置文件
+	
+	CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_INFO, _T("流程参数已保存"));
+}
+
+void CProcedureDlg::ResetProcedureParams()
+{
+	// 重置为默认值
+	m_params = ProcedureParams();  // 使用默认构造函数
+	
+	// 显示到界面
+	DisplayParamsToUI();
+	
+	CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_INFO, _T("已恢复默认参数"));
+}
+
+void CProcedureDlg::ImportProcedureParams()
+{
+	CFileDialog dlg(TRUE, _T("txt"), NULL,
+		OFN_HIDEREADONLY | OFN_FILEMUSTEXIST,
+		_T("参数文件 (*.txt)|*.txt|所有文件 (*.*)|*.*||"));
+	
+	if (dlg.DoModal() == IDOK)
+	{
+		// TODO: 从文件加载参数
+		MessageBox(_T("参数导入功能待实现"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+	}
+}
+
+void CProcedureDlg::ExportProcedureParams()
+{
+	// 从界面读取参数
+	ReadParamsFromUI();
+	
+	CFileDialog dlg(FALSE, _T("txt"), _T("procedure_params.txt"),
+		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+		_T("参数文件 (*.txt)|*.txt|所有文件 (*.*)|*.*||"));
+	
+	if (dlg.DoModal() == IDOK)
+	{
+		CStdioFile file;
+		if (file.Open(dlg.GetPathName(), CFile::modeCreate | CFile::modeWrite | CFile::typeText))
+		{
+			CString strContent;
+			strContent.Format(
+				_T("医疗穿刺流程参数配置\r\n")
+				_T("=====================================\r\n\r\n")
+				_T("步骤2 - 激光粗调参数：\r\n")
+				_T("  目标高度: %.2f mm\r\n")
+				_T("  粗调精度: ±%.2f mm\r\n\r\n")
+				_T("步骤4 - 精准对位参数：\r\n")
+				_T("  精调精度: ±%.2f mm\r\n")
+				_T("  最大调整次数: %d\r\n\r\n")
+				_T("步骤5 - 消毒参数：\r\n")
+				_T("  消毒时间: %.2f 秒\r\n\r\n")
+				_T("步骤6 - 穿刺参数：\r\n")
+				_T("  穿刺深度: %.2f mm\r\n")
+				_T("  穿刺速度: %.2f %%\r\n\r\n")
+				_T("安全参数：\r\n")
+				_T("  安全高度: %.2f mm\r\n")
+				_T("  启用视觉: %s\r\n")
+				_T("  单步超时: %d 秒\r\n"),
+				m_params.fTargetHeight,
+				m_params.fCoarseTolerance,
+				m_params.fFineTolerance,
+				m_params.nMaxAdjustCount,
+				m_params.fDisinfectTime,
+				m_params.fPunctureDepth,
+				m_params.fPunctureSpeed,
+				m_params.fSafeHeight,
+				m_params.bEnableVision ? _T("是") : _T("否"),
+				m_params.nStepTimeout
+			);
+			
+			file.WriteString(strContent);
+			file.Close();
+			
+			CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_INFO, _T("参数已导出到文件"));
+			MessageBox(_T("参数导出成功！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		}
+		else
+		{
+			MessageBox(_T("导出参数失败！"), _T("错误"), MB_OK | MB_ICON_ERROR);
+		}
+	}
+}

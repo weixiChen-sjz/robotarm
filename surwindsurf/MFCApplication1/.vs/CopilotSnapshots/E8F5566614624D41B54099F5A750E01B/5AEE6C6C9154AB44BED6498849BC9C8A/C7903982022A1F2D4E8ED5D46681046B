@@ -1,0 +1,4347 @@
+﻿// MFCApplication1Dlg.cpp: 实现文件
+//
+
+#include "pch.h"
+#include "framework.h"
+#include "MFCApplication1.h"
+#include "MFCApplication1Dlg.h"
+#include "afxdialogex.h"
+
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#endif
+
+
+// 用于应用程序“关于”菜单项的 CAboutDlg 对话框
+
+class CAboutDlg : public CDialogEx
+{
+public:
+	CAboutDlg();
+
+// 对话框数据
+#ifdef AFX_DESIGN_TIME
+	enum { IDD = IDD_ABOUTBOX };
+#endif
+
+	protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+
+// 实现
+protected:
+	DECLARE_MESSAGE_MAP()
+};
+
+CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
+{
+}
+
+void CAboutDlg::DoDataExchange(CDataExchange* pDX)
+{
+	CDialogEx::DoDataExchange(pDX);
+}
+
+BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
+END_MESSAGE_MAP()
+
+
+// CMFCApplication1Dlg 对话框
+
+
+
+CMFCApplication1Dlg::CMFCApplication1Dlg(CWnd* pParent /*=nullptr*/)
+	: CDialogEx(IDD_MFCAPPLICATION1_DIALOG, pParent)
+{
+	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	
+	// 初始化预设位置
+	m_presetPositions[0] = RobotArmPosition(100.0, 50.0, 30.0);
+	m_presetPositions[1] = RobotArmPosition(150.0, 75.0, 45.0);
+	m_presetPositions[2] = RobotArmPosition(200.0, 100.0, 60.0);
+}
+
+CMFCApplication1Dlg::~CMFCApplication1Dlg()
+{
+}
+
+void CMFCApplication1Dlg::DoDataExchange(CDataExchange* pDX)
+{
+	CDialogEx::DoDataExchange(pDX);
+}
+
+BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
+	ON_WM_SYSCOMMAND()
+	ON_WM_PAINT()
+	ON_WM_QUERYDRAGICON()
+	ON_WM_TIMER()
+	ON_WM_DESTROY()
+	ON_WM_SIZE()
+	
+	// 232串口
+	ON_BN_CLICKED(IDC_BUTTON_OPEN232, &CMFCApplication1Dlg::OnBnClickedButtonOpen232)
+	ON_BN_CLICKED(IDC_BUTTON_SEND232, &CMFCApplication1Dlg::OnBnClickedButtonSend232)
+	ON_BN_CLICKED(IDC_BUTTON_CLEAR232, &CMFCApplication1Dlg::OnBnClickedButtonClear232)
+	
+	// 485串口
+	ON_BN_CLICKED(IDC_BUTTON_OPEN485, &CMFCApplication1Dlg::OnBnClickedButtonOpen485)
+	ON_BN_CLICKED(IDC_BUTTON_SEND485, &CMFCApplication1Dlg::OnBnClickedButtonSend485)
+	ON_BN_CLICKED(IDC_BUTTON_CLEAR485, &CMFCApplication1Dlg::OnBnClickedButtonClear485)
+	
+	// 机械臂
+	ON_BN_CLICKED(IDC_BUTTON_CONNECT_ROBOT, &CMFCApplication1Dlg::OnBnClickedButtonConnectRobot)
+	ON_BN_CLICKED(IDC_BUTTON_INIT_ROBOT, &CMFCApplication1Dlg::OnBnClickedButtonInitRobot)
+	ON_BN_CLICKED(IDC_BUTTON_HOME_ROBOT, &CMFCApplication1Dlg::OnBnClickedButtonHomeRobot)
+	ON_BN_CLICKED(IDC_BUTTON_START_ROBOT, &CMFCApplication1Dlg::OnBnClickedButtonStartRobot)
+	ON_BN_CLICKED(IDC_BUTTON_STOP_ROBOT, &CMFCApplication1Dlg::OnBnClickedButtonStopRobot)
+	ON_BN_CLICKED(IDC_BUTTON_ESTOP_ROBOT, &CMFCApplication1Dlg::OnBnClickedButtonEstopRobot)
+	ON_BN_CLICKED(IDC_BUTTON_POS1, &CMFCApplication1Dlg::OnBnClickedButtonPos1)
+	ON_BN_CLICKED(IDC_BUTTON_POS2, &CMFCApplication1Dlg::OnBnClickedButtonPos2)
+	ON_BN_CLICKED(IDC_BUTTON_POS3, &CMFCApplication1Dlg::OnBnClickedButtonPos3)
+	ON_WM_HSCROLL()
+	
+	// I/O控制
+	ON_BN_CLICKED(IDC_BUTTON_IO_INIT, &CMFCApplication1Dlg::OnBnClickedButtonIoInit)
+	ON_BN_CLICKED(IDC_BUTTON_INFUSION_OPEN, &CMFCApplication1Dlg::OnBnClickedButtonInfusionOpen)
+	ON_BN_CLICKED(IDC_BUTTON_INFUSION_CLOSE, &CMFCApplication1Dlg::OnBnClickedButtonInfusionClose)
+	ON_BN_CLICKED(IDC_BUTTON_DISINFECT_OPEN, &CMFCApplication1Dlg::OnBnClickedButtonDisinfectOpen)
+	ON_BN_CLICKED(IDC_BUTTON_DISINFECT_CLOSE, &CMFCApplication1Dlg::OnBnClickedButtonDisinfectClose)
+	ON_BN_CLICKED(IDC_BUTTON_LASER_OPEN, &CMFCApplication1Dlg::OnBnClickedButtonLaserOpen)
+	ON_BN_CLICKED(IDC_BUTTON_LASER_CLOSE, &CMFCApplication1Dlg::OnBnClickedButtonLaserClose)
+	
+	// 日志
+	ON_BN_CLICKED(IDC_BUTTON_EXPORT_LOG, &CMFCApplication1Dlg::OnBnClickedButtonExportLog)
+	ON_BN_CLICKED(IDC_BUTTON_CLEAR_LOG, &CMFCApplication1Dlg::OnBnClickedButtonClearLog)
+END_MESSAGE_MAP()
+
+
+// CMFCApplication1Dlg 消息处理程序
+
+BOOL CMFCApplication1Dlg::OnInitDialog()
+{
+	CDialogEx::OnInitDialog();
+
+	// 将“关于...”菜单项添加到系统菜单中。
+
+	// IDM_ABOUTBOX 必须在系统命令范围内。
+	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
+	ASSERT(IDM_ABOUTBOX < 0xF000);
+
+	CMenu* pSysMenu = GetSystemMenu(FALSE);
+	if (pSysMenu != nullptr)
+	{
+		BOOL bNameValid;
+		CString strAboutMenu;
+		bNameValid = strAboutMenu.LoadString(IDS_ABOUTBOX);
+		ASSERT(bNameValid);
+		if (!strAboutMenu.IsEmpty())
+		{
+			pSysMenu->AppendMenu(MF_SEPARATOR);
+			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
+		}
+	}
+
+	// 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动
+	//  执行此操作
+	SetIcon(m_hIcon, TRUE);			// 设置大图标
+	SetIcon(m_hIcon, FALSE);		// 设置小图标
+
+	// 初始化控件
+	InitializeControls();
+	
+	// 设置日志回调
+	CLogManager::GetInstance().SetLogCallback(LogCallback, this);
+	
+	// 添加启动日志
+	CLogManager::GetInstance().AddLog(_T("系统"), LOG_INFO, _T("硬件控制系统启动"));
+	
+	// 启动定时器
+	SetTimer(TIMER_UPDATE_STATUS, 200, NULL);  // 状态更新定时器
+	SetTimer(TIMER_RECEIVE_DATA, 100, NULL);   // 数据接收定时器
+
+	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
+}
+
+void CMFCApplication1Dlg::OnSysCommand(UINT nID, LPARAM lParam)
+{
+	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
+	{
+		CAboutDlg dlgAbout;
+		dlgAbout.DoModal();
+	}
+	else
+	{
+		CDialogEx::OnSysCommand(nID, lParam);
+	}
+}
+
+// 如果向对话框添加最小化按钮，则需要下面的代码
+//  来绘制该图标。  对于使用文档/视图模型的 MFC 应用程序，
+//  这将由框架自动完成。
+
+void CMFCApplication1Dlg::OnPaint()
+{
+	if (IsIconic())
+	{
+		CPaintDC dc(this); // 用于绘制的设备上下文
+
+		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
+
+		// 使图标在工作区矩形中居中
+		int cxIcon = GetSystemMetrics(SM_CXICON);
+		int cyIcon = GetSystemMetrics(SM_CYICON);
+		CRect rect;
+		GetClientRect(&rect);
+		int x = (rect.Width() - cxIcon + 1) / 2;
+		int y = (rect.Height() - cyIcon + 1) / 2;
+
+		// 绘制图标
+		dc.DrawIcon(x, y, m_hIcon);
+	}
+	else
+	{
+		CDialogEx::OnPaint();
+	}
+}
+
+//当用户拖动最小化窗口时系统调用此函数取得光标
+//显示。
+HCURSOR CMFCApplication1Dlg::OnQueryDragIcon()
+{
+	return static_cast<HCURSOR>(m_hIcon);
+}
+
+void CMFCApplication1Dlg::OnDestroy()
+{
+	// 停止定时器
+	KillTimer(TIMER_UPDATE_STATUS);
+	KillTimer(TIMER_RECEIVE_DATA);
+	
+	// 关闭所有设备
+	m_serial232.Close();
+	m_serial485.Close();
+	m_robotArm.Disconnect();
+	m_ioController.Shutdown();
+	
+	CLogManager::GetInstance().AddLog(_T("系统"), LOG_INFO, _T("硬件控制系统关闭"));
+	
+	CDialogEx::OnDestroy();
+}
+
+void CMFCApplication1Dlg::OnSize(UINT nType, int cx, int cy)
+{
+	CDialogEx::OnSize(nType, cx, cy);
+	
+	// 这里可以添加响应式布局调整代码
+}
+
+void CMFCApplication1Dlg::OnTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == TIMER_UPDATE_STATUS)
+	{
+		// 更新状态显示
+		UpdateRobotArmStatus();
+		UpdateIOStatus();
+		
+		// GPIO读写处理（完全按照原程序的GPIO_ReadWrite方式）
+		m_ioController.ProcessGPIO();
+	}
+	else if (nIDEvent == TIMER_RECEIVE_DATA)
+	{
+		// 接收串口数据
+		ReceiveSerialData(m_serial232, IDC_LIST_RECEIVE232);
+		ReceiveSerialData(m_serial485, IDC_LIST_RECEIVE485);
+	}
+	
+	CDialogEx::OnTimer(nIDEvent);
+}
+
+void CMFCApplication1Dlg::InitializeControls()
+{
+	// 初始化232串口下拉框
+	CComboBox* pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_COM232);
+	if (pCombo)
+	{
+		for (int i = 1; i <= 8; i++)
+		{
+			CString str;
+			str.Format(_T("COM%d"), i);
+			pCombo->AddString(str);
+		}
+		pCombo->SetCurSel(0);
+	}
+	
+	pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_BAUDRATE232);
+	if (pCombo)
+	{
+		pCombo->AddString(_T("9600"));
+		pCombo->AddString(_T("19200"));
+		pCombo->AddString(_T("38400"));
+		pCombo->AddString(_T("57600"));
+		pCombo->AddString(_T("115200"));
+		pCombo->SetCurSel(0);
+	}
+	
+	pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_DATABITS232);
+	if (pCombo)
+	{
+		pCombo->AddString(_T("7"));
+		pCombo->AddString(_T("8"));
+		pCombo->SetCurSel(1);
+	}
+	
+	pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_STOPBITS232);
+	if (pCombo)
+	{
+		pCombo->AddString(_T("1"));
+		pCombo->AddString(_T("2"));
+		pCombo->SetCurSel(0);
+	}
+	
+	pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_PARITY232);
+	if (pCombo)
+	{
+		pCombo->AddString(_T("无"));
+		pCombo->AddString(_T("奇校验"));
+		pCombo->AddString(_T("偶校验"));
+		pCombo->SetCurSel(0);
+	}
+	
+	// 初始化485串口下拉框（与232相同）
+	pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_COM485);
+	if (pCombo)
+	{
+		for (int i = 1; i <= 8; i++)
+		{
+			CString str;
+			str.Format(_T("COM%d"), i);
+			pCombo->AddString(str);
+		}
+		pCombo->SetCurSel(1);
+	}
+	
+	pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_BAUDRATE485);
+	if (pCombo)
+	{
+		pCombo->AddString(_T("9600"));
+		pCombo->AddString(_T("19200"));
+		pCombo->AddString(_T("38400"));
+		pCombo->AddString(_T("57600"));
+		pCombo->AddString(_T("115200"));
+		pCombo->SetCurSel(0);
+	}
+	
+	pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_DATABITS485);
+	if (pCombo)
+	{
+		pCombo->AddString(_T("7"));
+		pCombo->AddString(_T("8"));
+		pCombo->SetCurSel(1);
+	}
+	
+	pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_STOPBITS485);
+	if (pCombo)
+	{
+		pCombo->AddString(_T("1"));
+		pCombo->AddString(_T("2"));
+		pCombo->SetCurSel(0);
+	}
+	
+	pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_PARITY485);
+	if (pCombo)
+	{
+		pCombo->AddString(_T("无"));
+		pCombo->AddString(_T("奇校验"));
+		pCombo->AddString(_T("偶校验"));
+		pCombo->SetCurSel(0);
+	}
+	
+	// 初始化机械臂串口下拉框
+	pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_COM_ROBOT);
+	if (pCombo)
+	{
+		for (int i = 1; i <= 8; i++)
+		{
+			CString str;
+			str.Format(_T("COM%d"), i);
+			pCombo->AddString(str);
+		}
+		pCombo->SetCurSel(2);
+	}
+	
+	pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_BAUDRATE_ROBOT);
+	if (pCombo)
+	{
+		pCombo->AddString(_T("9600"));
+		pCombo->AddString(_T("19200"));
+		pCombo->AddString(_T("38400"));
+		pCombo->AddString(_T("57600"));
+		pCombo->AddString(_T("115200"));
+		pCombo->SetCurSel(0);
+	}
+	
+	// 初始化速度滑块
+	CSliderCtrl* pSlider = (CSliderCtrl*)GetDlgItem(IDC_SLIDER_SPEED);
+	if (pSlider)
+	{
+		pSlider->SetRange(0, 100);
+		pSlider->SetPos(50);
+	}
+	
+	// 初始化日志列表
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_LOG);
+	if (pList)
+	{
+		pList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+		pList->InsertColumn(0, _T("时间"), LVCFMT_LEFT, 150);
+		pList->InsertColumn(1, _T("模块"), LVCFMT_LEFT, 80);
+		pList->InsertColumn(2, _T("级别"), LVCFMT_LEFT, 60);
+		pList->InsertColumn(3, _T("消息"), LVCFMT_LEFT, 300);
+	}
+	
+	// 初始化232串口接收列表
+	pList = (CListCtrl*)GetDlgItem(IDC_LIST_RECEIVE232);
+	if (pList)
+	{
+		pList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+		pList->InsertColumn(0, _T("时间"), LVCFMT_LEFT, 100);
+		pList->InsertColumn(1, _T("数据"), LVCFMT_LEFT, 250);
+	}
+	
+	// 初始化485串口接收列表
+	pList = (CListCtrl*)GetDlgItem(IDC_LIST_RECEIVE485);
+	if (pList)
+	{
+		pList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+		pList->InsertColumn(0, _T("时间"), LVCFMT_LEFT, 100);
+		pList->InsertColumn(1, _T("数据"), LVCFMT_LEFT, 200);
+		pList->InsertColumn(2, _T("距离"), LVCFMT_LEFT, 100);
+	}
+}
+
+// 232串口处理函数
+void CMFCApplication1Dlg::OnBnClickedButtonOpen232()
+{
+	CButton* pBtn = (CButton*)GetDlgItem(IDC_BUTTON_OPEN232);
+	if (!pBtn) return;
+	
+	if (!m_serial232.IsOpen())
+	{
+		// 获取串口参数
+		CComboBox* pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_COM232);
+		int nPort = pCombo->GetCurSel() + 1;
+		
+		pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_BAUDRATE232);
+		CString strBaud;
+		pCombo->GetLBText(pCombo->GetCurSel(), strBaud);
+		int nBaudRate = _ttoi(strBaud);
+		
+		pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_DATABITS232);
+		CString strDataBits;
+		pCombo->GetLBText(pCombo->GetCurSel(), strDataBits);
+		int nDataBits = _ttoi(strDataBits);
+		
+		pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_STOPBITS232);
+		int nStopBits = pCombo->GetCurSel();
+		
+		pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_PARITY232);
+		int nParity = pCombo->GetCurSel();
+		
+		// 打开串口
+		if (m_serial232.Open(nPort, nBaudRate, nDataBits, nStopBits, nParity))
+		{
+			pBtn->SetWindowText(_T("关闭"));
+			CString strMsg;
+			strMsg.Format(_T("232串口 COM%d 打开成功"), nPort);
+			CLogManager::GetInstance().AddLog(_T("232串口"), LOG_INFO, strMsg);
+		}
+		else
+		{
+			MessageBox(_T("打开232串口失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+			CLogManager::GetInstance().AddLog(_T("232串口"), LOG_ERROR, _T("打开232串口失败"));
+		}
+	}
+	else
+	{
+		// 关闭串口
+		m_serial232.Close();
+		pBtn->SetWindowText(_T("打开"));
+		CLogManager::GetInstance().AddLog(_T("232串口"), LOG_INFO, _T("232串口已关闭"));
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonSend232()
+{
+	if (!m_serial232.IsOpen())
+	{
+		MessageBox(_T("请先打开232串口！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		return;
+	}
+	
+	CString strSend;
+	GetDlgItemText(IDC_EDIT_SEND232, strSend);
+	
+	if (strSend.IsEmpty())
+	{
+		return;
+	}
+	
+	// 检查是否十六进制模式
+	CButton* pCheck = (CButton*)GetDlgItem(IDC_CHECK_HEX232);
+	BOOL bHex = pCheck ? pCheck->GetCheck() : FALSE;
+	
+	CStringA strSendA(strSend);
+	// 使用新的SendData方法，自动添加终止符 0x0A 0x0D 0x0A 0x0D
+	if (m_serial232.SendData(strSendA.GetString(), strSendA.GetLength(), TRUE))
+	{
+		CLogManager::GetInstance().AddLog(_T("232串口"), LOG_INFO, _T("发送数据成功"));
+	}
+	else
+	{
+		CLogManager::GetInstance().AddLog(_T("232串口"), LOG_ERROR, _T("发送数据失败"));
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonClear232()
+{
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_RECEIVE232); if (pList) { pList->DeleteAllItems(); }
+	m_serial232.ClearBuffer();
+}
+
+// 485串口处理函数
+void CMFCApplication1Dlg::OnBnClickedButtonOpen485()
+{
+	CButton* pBtn = (CButton*)GetDlgItem(IDC_BUTTON_OPEN485);
+	if (!pBtn) return;
+	
+	if (!m_serial485.IsOpen())
+	{
+		// 获取串口参数
+		CComboBox* pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_COM485);
+		int nPort = pCombo->GetCurSel() + 1;
+		
+		pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_BAUDRATE485);
+		CString strBaud;
+		pCombo->GetLBText(pCombo->GetCurSel(), strBaud);
+		int nBaudRate = _ttoi(strBaud);
+		
+		pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_DATABITS485);
+		CString strDataBits;
+		pCombo->GetLBText(pCombo->GetCurSel(), strDataBits);
+		int nDataBits = _ttoi(strDataBits);
+		
+		pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_STOPBITS485);
+		int nStopBits = pCombo->GetCurSel();
+		
+		pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_PARITY485);
+		int nParity = pCombo->GetCurSel();
+		
+		// 打开串口
+		if (m_serial485.Open(nPort, nBaudRate, nDataBits, nStopBits, nParity))
+		{
+			pBtn->SetWindowText(_T("关闭"));
+			CString strMsg;
+			strMsg.Format(_T("485串口 COM%d 打开成功"), nPort);
+			CLogManager::GetInstance().AddLog(_T("485串口"), LOG_INFO, strMsg);
+		}
+		else
+		{
+			MessageBox(_T("打开485串口失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+			CLogManager::GetInstance().AddLog(_T("485串口"), LOG_ERROR, _T("打开485串口失败"));
+		}
+	}
+	else
+	{
+		// 关闭串口
+		m_serial485.Close();
+		pBtn->SetWindowText(_T("打开"));
+		CLogManager::GetInstance().AddLog(_T("485串口"), LOG_INFO, _T("485串口已关闭"));
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonSend485()
+{
+	if (!m_serial485.IsOpen())
+	{
+		MessageBox(_T("请先打开485串口！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		return;
+	}
+	
+	CString strSend;
+	GetDlgItemText(IDC_EDIT_SEND485, strSend);
+	
+	if (strSend.IsEmpty())
+	{
+		return;
+	}
+	
+	CStringA strSendA(strSend);
+	// 485串口不添加终止符，直接发送原始数据
+	if (m_serial485.SendData(strSendA.GetString(), strSendA.GetLength()))
+	{
+		CLogManager::GetInstance().AddLog(_T("485串口"), LOG_INFO, _T("发送数据成功"));
+	}
+	else
+	{
+		CLogManager::GetInstance().AddLog(_T("485串口"), LOG_ERROR, _T("发送数据失败"));
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonClear485()
+{
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_RECEIVE485); if (pList) { pList->DeleteAllItems(); }
+	m_serial485.ClearBuffer();
+}
+
+// 机械臂处理函数
+void CMFCApplication1Dlg::OnBnClickedButtonConnectRobot()
+{
+	CButton* pBtn = (CButton*)GetDlgItem(IDC_BUTTON_CONNECT_ROBOT);
+	if (!pBtn) return;
+	
+	if (!m_robotArm.IsConnected())
+	{
+		CComboBox* pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_COM_ROBOT);
+		int nPort = pCombo->GetCurSel() + 1;
+		
+		pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_BAUDRATE_ROBOT);
+		CString strBaud;
+		pCombo->GetLBText(pCombo->GetCurSel(), strBaud);
+		int nBaudRate = _ttoi(strBaud);
+		
+		if (m_robotArm.Connect(nPort, nBaudRate))
+		{
+			pBtn->SetWindowText(_T("断开"));
+			CString strMsg;
+			strMsg.Format(_T("机械臂连接成功 COM%d"), nPort);
+			CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_INFO, strMsg);
+		}
+		else
+		{
+			MessageBox(_T("连接机械臂失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+			CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_ERROR, _T("连接机械臂失败"));
+		}
+	}
+	else
+	{
+		m_robotArm.Disconnect();
+		pBtn->SetWindowText(_T("连接"));
+		CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_INFO, _T("机械臂已断开"));
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonInitRobot()
+{
+	if (!m_robotArm.IsConnected())
+	{
+		MessageBox(_T("请先连接机械臂！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		return;
+	}
+	
+	if (m_robotArm.Initialize())
+	{
+		CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_INFO, _T("机械臂初始化成功"));
+	}
+	else
+	{
+		MessageBox(_T("机械臂初始化失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+		CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_ERROR, _T("机械臂初始化失败"));
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonHomeRobot()
+{
+	if (!m_robotArm.IsConnected())
+	{
+		MessageBox(_T("请先连接机械臂！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		return;
+	}
+	
+	if (m_robotArm.GoHome())
+	{
+		CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_INFO, _T("机械臂归零成功"));
+	}
+	else
+	{
+		MessageBox(_T("机械臂归零失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+		CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_ERROR, _T("机械臂归零失败"));
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonStartRobot()
+{
+	if (!m_robotArm.IsConnected())
+	{
+		MessageBox(_T("请先连接机械臂！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		return;
+	}
+	
+	// 获取目标位置
+	CString strX, strY, strZ;
+	GetDlgItemText(IDC_EDIT_X_POS, strX);
+	GetDlgItemText(IDC_EDIT_Y_POS, strY);
+	GetDlgItemText(IDC_EDIT_Z_POS, strZ);
+	
+	RobotArmPosition pos;
+	pos.X = _ttof(strX);
+	pos.Y = _ttof(strY);
+	pos.Z = _ttof(strZ);
+	
+	// 获取速度
+	CSliderCtrl* pSlider = (CSliderCtrl*)GetDlgItem(IDC_SLIDER_SPEED);
+	int nSpeed = pSlider ? pSlider->GetPos() : 50;
+	
+	if (m_robotArm.MoveTo(pos, nSpeed))
+	{
+		CString strMsg;
+		strMsg.Format(_T("机械臂移动到 (%.2f, %.2f, %.2f)"), pos.X, pos.Y, pos.Z);
+		CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_INFO, strMsg);
+	}
+	else
+	{
+		MessageBox(_T("机械臂移动失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+		CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_ERROR, _T("机械臂移动失败"));
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonStopRobot()
+{
+	if (m_robotArm.Stop())
+	{
+		CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_INFO, _T("机械臂停止"));
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonEstopRobot()
+{
+	if (m_robotArm.EmergencyStop())
+	{
+		MessageBox(_T("机械臂急停！"), _T("警告"), MB_OK | MB_ICONWARNING);
+		CLogManager::GetInstance().AddLog(_T("机械臂"), LOG_WARNING, _T("机械臂急停"));
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonPos1()
+{
+	CString strX, strY, strZ;
+	strX.Format(_T("%.2f"), m_presetPositions[0].X);
+	strY.Format(_T("%.2f"), m_presetPositions[0].Y);
+	strZ.Format(_T("%.2f"), m_presetPositions[0].Z);
+	SetDlgItemText(IDC_EDIT_X_POS, strX);
+	SetDlgItemText(IDC_EDIT_Y_POS, strY);
+	SetDlgItemText(IDC_EDIT_Z_POS, strZ);
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonPos2()
+{
+	CString strX, strY, strZ;
+	strX.Format(_T("%.2f"), m_presetPositions[1].X);
+	strY.Format(_T("%.2f"), m_presetPositions[1].Y);
+	strZ.Format(_T("%.2f"), m_presetPositions[1].Z);
+	SetDlgItemText(IDC_EDIT_X_POS, strX);
+	SetDlgItemText(IDC_EDIT_Y_POS, strY);
+	SetDlgItemText(IDC_EDIT_Z_POS, strZ);
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonPos3()
+{
+	CString strX, strY, strZ;
+	strX.Format(_T("%.2f"), m_presetPositions[2].X);
+	strY.Format(_T("%.2f"), m_presetPositions[2].Y);
+	strZ.Format(_T("%.2f"), m_presetPositions[2].Z);
+	SetDlgItemText(IDC_EDIT_X_POS, strX);
+	SetDlgItemText(IDC_EDIT_Y_POS, strY);
+	SetDlgItemText(IDC_EDIT_Z_POS, strZ);
+}
+
+void CMFCApplication1Dlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	CSliderCtrl* pSlider = (CSliderCtrl*)GetDlgItem(IDC_SLIDER_SPEED);
+	if (pSlider && pScrollBar == (CScrollBar*)pSlider)
+	{
+		int nSpeed = pSlider->GetPos();
+		CString strSpeed;
+		strSpeed.Format(_T("速度: %d%%"), nSpeed);
+		SetDlgItemText(IDC_STATIC_SPEED, strSpeed);
+		m_robotArm.SetSpeed(nSpeed);
+	}
+	
+	CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
+}
+
+// I/O控制处理函数
+void CMFCApplication1Dlg::OnBnClickedButtonIoInit()
+{
+	if (m_ioController.Initialize())
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, _T("I/O控制器初始化成功"));
+		
+		CString strMsg;
+		strMsg.Format(_T("I/O控制器初始化成功！\n\n")
+			_T("硬件状态：%s\n\n")
+			_T("设备映射说明：\n")
+			_T("输入1 → 输液传感器\n")
+			_T("输入2 → 消毒液传感器\n")
+			_T("输入3 → 激光测距仪传感器\n")
+			_T("输出5 → 运动指示灯（未使用）\n")
+			_T("输出6 → 消毒液开关\n")
+			_T("输出7 → 输液开关\n")
+			_T("输出8 → 激光测距仪电源"),
+			m_ioController.GetHardwareStateText());
+		
+		MessageBox(strMsg, _T("提示"), MB_OK | MB_ICONINFORMATION);
+		
+		// 更新按钮状态
+		UpdateIOButtonStates();
+	}
+	else
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, _T("I/O控制器初始化失败：未检测到硬件"));
+		MessageBox(_T("I/O控制器初始化失败！\n\n")
+			_T("原因：未检测到I/O硬件设备\n\n")
+			_T("请检查：\n")
+			_T("1. I/O设备是否正确连接\n")
+			_T("2. 驱动程序是否已安装\n")
+			_T("3. 设备是否已上电"), 
+			_T("错误"), MB_OK | MB_ICONERROR);
+		
+		// 禁用所有控制按钮
+		UpdateIOButtonStates();
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonInfusionOpen()
+{
+	if (!m_ioController.IsInitialized())
+	{
+		MessageBox(_T("请先初始化I/O控制器！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		return;
+	}
+	
+	if (!m_ioController.IsHardwareConnected())
+	{
+		MessageBox(_T("硬件未连接，无法控制开关！"), _T("警告"), MB_OK | MB_ICONWARNING);
+		return;
+	}
+	
+	if (m_ioController.OpenInfusionSwitch())
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, _T("输液开关已打开"));
+	}
+	else
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, _T("打开输液开关失败"));
+		MessageBox(_T("打开输液开关失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonInfusionClose()
+{
+	if (!m_ioController.IsInitialized())
+	{
+		MessageBox(_T("请先初始化I/O控制器！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		return;
+	}
+	
+	if (!m_ioController.IsHardwareConnected())
+	{
+		MessageBox(_T("硬件未连接，无法控制开关！"), _T("警告"), MB_OK | MB_ICONWARNING);
+		return;
+	}
+	
+	if (m_ioController.CloseInfusionSwitch())
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, _T("输液开关已关闭"));
+	}
+	else
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, _T("关闭输液开关失败"));
+		MessageBox(_T("关闭输液开关失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonDisinfectOpen()
+{
+	if (!m_ioController.IsInitialized())
+	{
+		MessageBox(_T("请先初始化I/O控制器！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		return;
+	}
+	
+	if (!m_ioController.IsHardwareConnected())
+	{
+		MessageBox(_T("硬件未连接，无法控制开关！"), _T("警告"), MB_OK | MB_ICONWARNING);
+		return;
+	}
+	
+	if (m_ioController.OpenDisinfectSwitch())
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, _T("消毒液开关已打开"));
+	}
+	else
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, _T("打开消毒液开关失败"));
+		MessageBox(_T("打开消毒液开关失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonDisinfectClose()
+{
+	if (!m_ioController.IsInitialized())
+	{
+		MessageBox(_T("请先初始化I/O控制器！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		return;
+	}
+	
+	if (!m_ioController.IsHardwareConnected())
+	{
+		MessageBox(_T("硬件未连接，无法控制开关！"), _T("警告"), MB_OK | MB_ICONWARNING);
+		return;
+	}
+	
+	if (m_ioController.CloseDisinfectSwitch())
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, _T("消毒液开关已关闭"));
+	}
+	else
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, _T("关闭消毒液开关失败"));
+		MessageBox(_T("关闭消毒液开关失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonLaserOpen()
+{
+	if (!m_ioController.IsInitialized())
+	{
+		MessageBox(_T("请先初始化I/O控制器！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		return;
+	}
+	
+	if (!m_ioController.IsHardwareConnected())
+	{
+		MessageBox(_T("硬件未连接，无法控制开关！"), _T("警告"), MB_OK | MB_ICONWARNING);
+		return;
+	}
+	
+	if (m_ioController.OpenLaserSwitch())
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, _T("激光测距仪已打开"));
+	}
+	else
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, _T("打开激光测距仪失败"));
+		MessageBox(_T("打开激光测距仪失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonLaserClose()
+{
+	if (!m_ioController.IsInitialized())
+	{
+		MessageBox(_T("请先初始化I/O控制器！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		return;
+	}
+	
+	if (!m_ioController.IsHardwareConnected())
+	{
+		MessageBox(_T("硬件未连接，无法控制开关！"), _T("警告"), MB_OK | MB_ICONWARNING);
+		return;
+	}
+	
+	if (m_ioController.CloseLaserSwitch())
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, _T("激光测距仪已关闭"));
+	}
+	else
+	{
+		CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, _T("关闭激光测距仪失败"));
+		MessageBox(_T("关闭激光测距仪失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+	}
+}
+
+// 日志处理函数
+void CMFCApplication1Dlg::OnBnClickedButtonExportLog()
+{
+	CFileDialog dlg(FALSE, _T("txt"), _T("log.txt"), 
+		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+		_T("文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*||"));
+	
+	if (dlg.DoModal() == IDOK)
+	{
+		if (CLogManager::GetInstance().ExportToFile(dlg.GetPathName()))
+		{
+			MessageBox(_T("导出日志成功！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+		}
+		else
+		{
+			MessageBox(_T("导出日志失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+		}
+	}
+}
+
+void CMFCApplication1Dlg::OnBnClickedButtonClearLog()
+{
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_LOG);
+	if (pList)
+	{
+		pList->DeleteAllItems();
+	}
+	
+	CLogManager::GetInstance().ClearLogs();
+}
+
+// 辅助函数
+void CMFCApplication1Dlg::UpdateRobotArmStatus()
+{
+	if (!m_robotArm.IsConnected())
+	{
+		return;
+	}
+	
+	// 更新状态文本
+	CString strStatus;
+	RobotArmState state = m_robotArm.GetState();
+	
+	switch (state)
+	{
+	case STATE_DISCONNECTED:
+		strStatus = _T("未连接");
+		break;
+	case STATE_CONNECTED:
+		strStatus = _T("已连接");
+		break;
+	case STATE_INITIALIZED:
+		strStatus = _T("已初始化");
+		break;
+	case STATE_MOVING:
+		strStatus = _T("运动中");
+		break;
+	case STATE_ERROR:
+		strStatus = _T("错误");
+		break;
+	}
+	
+	SetDlgItemText(IDC_STATIC_ROBOT_STATUS, strStatus);
+	
+	// 更新位置显示
+	RobotArmPosition pos = m_robotArm.GetCurrentPosition();
+	CString strX, strY, strZ;
+	strX.Format(_T("%.2f"), pos.X);
+	strY.Format(_T("%.2f"), pos.Y);
+	strZ.Format(_T("%.2f"), pos.Z);
+	SetDlgItemText(IDC_EDIT_X_POS, strX);
+	SetDlgItemText(IDC_EDIT_Y_POS, strY);
+	SetDlgItemText(IDC_EDIT_Z_POS, strZ);
+}
+
+void CMFCApplication1Dlg::UpdateIOButtonStates()
+{
+	// 根据硬件连接状态启用/禁用按钮
+	BOOL bHardwareConnected = m_ioController.IsHardwareConnected();
+	BOOL bInitialized = m_ioController.IsInitialized();
+	
+	// 控制按钮只有在初始化且硬件连接时才启用
+	BOOL bEnableControl = bInitialized && bHardwareConnected;
+	
+	CWnd* pWnd;
+	pWnd = GetDlgItem(IDC_BUTTON_INFUSION_OPEN);
+	if (pWnd) pWnd->EnableWindow(bEnableControl);
+	
+	pWnd = GetDlgItem(IDC_BUTTON_INFUSION_CLOSE);
+	if (pWnd) pWnd->EnableWindow(bEnableControl);
+	
+	pWnd = GetDlgItem(IDC_BUTTON_DISINFECT_OPEN);
+	if (pWnd) pWnd->EnableWindow(bEnableControl);
+	
+	pWnd = GetDlgItem(IDC_BUTTON_DISINFECT_CLOSE);
+	if (pWnd) pWnd->EnableWindow(bEnableControl);
+	
+	pWnd = GetDlgItem(IDC_BUTTON_LASER_OPEN);
+	if (pWnd) pWnd->EnableWindow(bEnableControl);
+	
+	pWnd = GetDlgItem(IDC_BUTTON_LASER_CLOSE);
+	if (pWnd) pWnd->EnableWindow(bEnableControl);
+	
+	// 更新硬件状态显示
+	if (bInitialized)
+	{
+		CString strStatus;
+		strStatus.Format(_T("硬件状态: %s"), m_ioController.GetHardwareStateText());
+		SetDlgItemText(IDC_STATIC_IO_HW_STATUS, strStatus);
+	}
+}
+
+void CMFCApplication1Dlg::UpdateIOStatus()
+{
+	if (!m_ioController.IsInitialized())
+	{
+		return;
+	}
+	
+	// GPIO会自动在ProcessGPIO中更新，这里只需要显示状态
+	
+	// 获取当前GPIO输入电平
+	BYTE levels = m_ioController.GetGPIOLevels();
+	
+	// 显示输入状态（3个传感器）和输出状态（3个开关），完美一一对应
+	CString strInput1, strInput2, strInput3, strOutput1, strOutput2, strOutput3;
+	
+	// ========================================================
+	// 【输入传感器 - 3个】
+	// ========================================================
+	
+	// 输入1（PIN 1 - 输液传感器）
+	strInput1.Format(_T("输液传感器: %s"), 
+		(levels & 0x01) ? _T("高") : _T("低"));
+	SetDlgItemText(IDC_STATIC_IO1_STATUS, strInput1);
+	
+	// 输入2（PIN 2 - 消毒液传感器）
+	strInput2.Format(_T("消毒液传感器: %s"), 
+		(levels & 0x02) ? _T("高") : _T("低"));
+	SetDlgItemText(IDC_STATIC_IO2_STATUS, strInput2);
+	
+	// 输入3（PIN 3 - 激光测距仪传感器）
+	strInput3.Format(_T("激光测距仪传感器: %s"), 
+		(levels & 0x04) ? _T("高") : _T("低"));
+	SetDlgItemText(IDC_STATIC_IO3_STATUS, strInput3);
+	
+	// ========================================================
+	// 【输出开关 - 3个，与输入完美一一对应】
+	// ========================================================
+	
+	// 输出1（PIN 7 - 输液开关）← 对应输入1（输液传感器）
+	strOutput1.Format(_T("输液开关: %s"), 
+		m_ioController.GetInfusionSwitchState() ? _T("开") : _T("关"));
+	SetDlgItemText(IDC_STATIC_IO4_STATUS, strOutput1);
+	
+	// 输出2（PIN 6 - 消毒液开关）← 对应输入2（消毒液传感器）
+	strOutput2.Format(_T("消毒液开关: %s"), 
+		m_ioController.GetDisinfectSwitchState() ? _T("开") : _T("关"));
+	SetDlgItemText(IDC_STATIC_IO5_STATUS, strOutput2);
+	
+	// 输出3（PIN 8 - 激光测距仪电源）← 对应输入3（激光测距仪传感器）⭐ 新增
+	strOutput3.Format(_T("激光测距仪电源: %s"), 
+		m_ioController.GetLaserSwitchState() ? _T("开") : _T("关"));
+	SetDlgItemText(IDC_STATIC_IO6_STATUS, strOutput3);
+	
+	// 更新按钮状态
+	UpdateIOButtonStates();
+}
+
+void CMFCApplication1Dlg::ReceiveSerialData(CSerialPort& serial, int nListCtrlId)
+{
+	if (!serial.IsOpen())
+	{
+		return;
+	}
+	
+	char szBuffer[1024];
+	DWORD dwBytesRead = 0;
+	
+	if (serial.ReceiveData(szBuffer, sizeof(szBuffer) - 1, dwBytesRead))
+	{
+		if (dwBytesRead > 0)
+		{
+			szBuffer[dwBytesRead] = '\0';
+			
+			// 检查是否为十六进制模式
+			BOOL bHex = FALSE;
+			if (nListCtrlId == IDC_LIST_RECEIVE232)
+			{
+				CButton* pCheck = (CButton*)GetDlgItem(IDC_CHECK_HEX232);
+				bHex = pCheck ? pCheck->GetCheck() : FALSE;
+			}
+			else if (nListCtrlId == IDC_LIST_RECEIVE485)
+			{
+				CButton* pCheck = (CButton*)GetDlgItem(IDC_CHECK_HEX485);
+				bHex = pCheck ? pCheck->GetCheck() : FALSE;
+				
+				// 如果是485串口（激光测距仪），尝试解析距离数据
+				float fDistance = 0.0f;
+				if (CSerialPort::ParseLaserDistance(szBuffer, dwBytesRead, fDistance))
+				{
+					// 先显示原始十六进制数据到日志
+					CString strHexData;
+					for (DWORD i = 0; i < dwBytesRead; i++)
+					{
+						CString str;
+						str.Format(_T("%02X "), (BYTE)szBuffer[i]);
+						strHexData += str;
+					}
+					strHexData.TrimRight();  // 移除末尾空格
+					
+					CString strLog;
+					strLog.Format(_T("接收数据: %s"), strHexData);
+					CLogManager::GetInstance().AddLog(_T("485串口"), LOG_INFO, strLog);
+					
+					// 检查测量范围 (-80mm ~ 80mm)
+					const float MIN_RANGE = -80.0f;
+					const float MAX_RANGE = 80.0f;
+					
+					// 格式化十六进制数据
+					CString strData = FormatDataDisplay(szBuffer, dwBytesRead, TRUE);
+					
+					// 获取当前时间
+					CString strTime = GetCurrentTimeString();
+			
+					// 添加到列表
+					CListCtrl* pList = (CListCtrl*)GetDlgItem(nListCtrlId);
+					if (pList)
+					{
+						int nIndex = pList->GetItemCount();
+						pList->InsertItem(nIndex, strTime);           // 第0列：时间
+						pList->SetItemText(nIndex, 1, strData);       // 第1列：十六进制数据
+						
+						// 第2列：距离值
+						CString strDistance;
+						if (fDistance < MIN_RANGE || fDistance > MAX_RANGE)
+						{
+							// 超出范围
+							strDistance.Format(_T("%.2f mm [超出范围！]"), fDistance);
+							
+							CString strRangeLog;
+							strRangeLog.Format(_T("激光测距仪测量距离: %.2f mm [超出范围！有效范围: %.0f ~ %.0f mm]"), 
+								fDistance, MIN_RANGE, MAX_RANGE);
+							CLogManager::GetInstance().AddLog(_T("485串口"), LOG_WARNING, strRangeLog);
+						}
+						else
+						{
+							// 范围内正常值
+							strDistance.Format(_T("%.2f mm"), fDistance);
+							
+							CString strDistLog;
+							strDistLog.Format(_T("激光测距仪测量距离: %.2f mm"), fDistance);
+							CLogManager::GetInstance().AddLog(_T("485串口"), LOG_INFO, strDistLog);
+						}
+						
+						pList->SetItemText(nIndex, 2, strDistance);   // 第2列：距离
+						
+						// 自动滚动到最新数据
+						pList->EnsureVisible(nIndex, FALSE);
+						
+						// 限制列表数量
+						if (pList->GetItemCount() > 1000)
+						{
+							pList->DeleteItem(0);
+						}
+					}
+					
+					return;
+				}
+			}
+			
+			// 格式化数据
+			CString strData = FormatDataDisplay(szBuffer, dwBytesRead, bHex);
+			
+			// 添加到列表
+			AddSerialDataToList(nListCtrlId, strData, bHex);
+		}
+	}
+}
+
+void CMFCApplication1Dlg::AddSerialDataToList(int nListCtrlId, const CString& strData, BOOL bHex)
+{
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(nListCtrlId);
+	if (!pList)
+	{
+		return;
+	}
+	
+	// 获取当前时间
+	CString strTime = GetCurrentTimeString();
+	
+	// 添加到列表
+	int nIndex = pList->GetItemCount();
+	pList->InsertItem(nIndex, strTime);
+	pList->SetItemText(nIndex, 1, strData);
+	
+	// 自动滚动到最新数据
+	pList->EnsureVisible(nIndex, FALSE);
+	
+	// 限制列表数量，避免占用太多内存
+	if (pList->GetItemCount() > 1000)
+	{
+		pList->DeleteItem(0);
+	}
+}
+
+CString CMFCApplication1Dlg::GetCurrentTimeString()
+{
+	CTime time = CTime::GetCurrentTime();
+	return time.Format(_T("%H:%M:%S"));
+}
+
+
+
+void CMFCApplication1Dlg::LogCallback(const LogEntry& entry, void* pUserData)
+{
+	CMFCApplication1Dlg* pDlg = (CMFCApplication1Dlg*)pUserData;
+	if (pDlg && pDlg->GetSafeHwnd())
+	{
+		pDlg->AddLogToList(entry);
+	}
+}
+
+void CMFCApplication1Dlg::AddLogToList(const LogEntry& entry)
+{
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_LOG);
+	if (!pList)
+	{
+		return;
+	}
+	
+	int nIndex = pList->GetItemCount();
+	pList->InsertItem(nIndex, entry.strTime);
+	pList->SetItemText(nIndex, 1, entry.strModule);
+	
+	CString strLevel;
+	switch (entry.level)
+	{
+	case LOG_INFO:
+		strLevel = _T("信息");
+		break;
+	case LOG_WARNING:
+		strLevel = _T("警告");
+		break;
+	case LOG_ERROR:
+		strLevel = _T("错误");
+		break;
+	}
+	
+	pList->SetItemText(nIndex, 2, strLevel);
+	pList->SetItemText(nIndex, 3, entry.strMessage);
+	pList->EnsureVisible(nIndex, FALSE);
+	
+	if (pList->GetItemCount() > 1000)
+	{
+		pList->DeleteItem(0);
+	}
+}
+
+CString CMFCApplication1Dlg::FormatDataDisplay(const char* pData, DWORD dwSize, BOOL bHex)
+{
+	CString strResult;
+	
+	if (bHex)
+	{
+		for (DWORD i = 0; i < dwSize; i++)
+		{
+			CString str;
+			str.Format(_T("%02X "), (BYTE)pData[i]);
+			strResult += str;
+		}
+	}
+	else
+	{
+		strResult = CString(pData);
+	}
+	
+	return strResult;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

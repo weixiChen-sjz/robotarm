@@ -1,0 +1,252 @@
+﻿#include "pch.h"
+#include "IOControllerProxy.h"
+
+#include "../IOBridge/IOBridgeProtocol.h"
+#include "LogManager.h"
+
+#include <string>
+
+namespace
+{
+	static CString GetModuleDir()
+	{
+		TCHAR path[MAX_PATH] = { 0 };
+		GetModuleFileName(nullptr, path, MAX_PATH);
+		CString p(path);
+		int pos = p.ReverseFind(_T('\\'));
+		if (pos >= 0) p = p.Left(pos);
+		return p;
+	}
+}
+
+CIOControllerProxy::CIOControllerProxy()
+	: m_hPipe(INVALID_HANDLE_VALUE)
+	, m_bConnected(FALSE)
+	, m_lastGPIOLevels(0)
+	, m_lastInfusionOpen(FALSE)
+	, m_lastDisinfectOpen(FALSE)
+	, m_lastLaserOpen(FALSE)
+{
+}
+
+CIOControllerProxy::~CIOControllerProxy()
+{
+	Shutdown();
+}
+
+void CIOControllerProxy::ClosePipe()
+{
+	if (m_hPipe != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(m_hPipe);
+		m_hPipe = INVALID_HANDLE_VALUE;
+	}
+	m_bConnected = FALSE;
+}
+
+BOOL CIOControllerProxy::ConnectPipe()
+{
+	if (m_bConnected && m_hPipe != INVALID_HANDLE_VALUE)
+		return TRUE;
+
+	if (!WaitNamedPipeW(IOBridge::kPipeName, 50))
+		return FALSE;
+
+	m_hPipe = CreateFileW(
+		IOBridge::kPipeName,
+		GENERIC_READ | GENERIC_WRITE,
+		0,
+		nullptr,
+		OPEN_EXISTING,
+		0,
+		nullptr);
+
+	if (m_hPipe == INVALID_HANDLE_VALUE)
+		return FALSE;
+
+	DWORD mode = PIPE_READMODE_MESSAGE;
+	SetNamedPipeHandleState(m_hPipe, &mode, nullptr, nullptr);
+
+	m_bConnected = TRUE;
+	return TRUE;
+}
+
+BOOL CIOControllerProxy::EnsureBridgeRunning()
+{
+	if (ConnectPipe())
+		return TRUE;
+
+	// Try launch IOBridge.exe from same directory.
+	CString exePath = GetModuleDir() + _T("\\IOBridge.exe");
+
+	STARTUPINFO si{};
+	si.cb = sizeof(si);
+	PROCESS_INFORMATION pi{};
+
+	BOOL ok = CreateProcess(
+		exePath.GetBuffer(),
+		nullptr,
+		nullptr,
+		nullptr,
+		FALSE,
+		CREATE_NO_WINDOW,
+		nullptr,
+		nullptr,
+		&si,
+		&pi);
+	if (exePath.GetBuffer()) exePath.ReleaseBuffer();
+
+	if (ok)
+	{
+		CloseHandle(pi.hThread);
+		CloseHandle(pi.hProcess);
+		// Wait briefly for pipe.
+		for (int i = 0; i < 50; ++i)
+		{
+			Sleep(50);
+			if (ConnectPipe())
+				return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+BOOL CIOControllerProxy::SendCommand(uint32_t cmd, const void* payload, DWORD payloadSize, void* outPayload, DWORD outPayloadCapacity, DWORD* outPayloadSize)
+{
+	if (outPayloadSize)
+		*outPayloadSize = 0;
+
+	if (!EnsureBridgeRunning())
+		return FALSE;
+
+	IOBridge::Request req{};
+	req.magic = IOBridge::kMagic;
+	req.version = IOBridge::kVersion;
+	req.command = cmd;
+	req.payloadSize = payloadSize;
+	if (payload && payloadSize > 0)
+		memcpy(req.payload, payload, min<DWORD>(payloadSize, sizeof(req.payload)));
+
+	DWORD written = 0;
+	if (!WriteFile(m_hPipe, &req, sizeof(req), &written, nullptr))
+	{
+		ClosePipe();
+		return FALSE;
+	}
+
+	IOBridge::Response resp{};
+	DWORD read = 0;
+	if (!ReadFile(m_hPipe, &resp, sizeof(resp), &read, nullptr))
+	{
+		ClosePipe();
+		return FALSE;
+	}
+
+	if (resp.magic != IOBridge::kMagic || resp.version != IOBridge::kVersion)
+		return FALSE;
+	if (resp.status != 0)
+		return FALSE;
+
+	if (outPayload && outPayloadCapacity > 0 && resp.payloadSize > 0)
+	{
+		DWORD copy = min<DWORD>(outPayloadCapacity, resp.payloadSize);
+		memcpy(outPayload, resp.payload, copy);
+		if (outPayloadSize) *outPayloadSize = copy;
+	}
+	return TRUE;
+}
+
+BOOL CIOControllerProxy::Initialize()
+{
+	BOOL ok = SendCommand((uint32_t)IOBridge::Command::Initialize, nullptr, 0, nullptr, 0, nullptr);
+	if (!ok)
+		CLogManager::GetInstance().AddLog(_T("GPIO"), LOG_ERROR, _T("IOBridge Initialize 失败"));
+	return ok;
+}
+
+void CIOControllerProxy::ProcessGPIO()
+{
+	SendCommand((uint32_t)IOBridge::Command::ProcessGPIO, nullptr, 0, nullptr, 0, nullptr);
+	// Keep local cache fresh.
+	(void)GetGPIOLevels();
+	(void)GetInfusionSwitchState();
+	(void)GetDisinfectSwitchState();
+	(void)GetLaserSwitchState();
+}
+
+void CIOControllerProxy::Shutdown()
+{
+	if (m_bConnected)
+		SendCommand((uint32_t)IOBridge::Command::Shutdown, nullptr, 0, nullptr, 0, nullptr);
+	ClosePipe();
+}
+
+BYTE CIOControllerProxy::GetGPIOLevels()
+{
+	BYTE v = 0;
+	DWORD got = 0;
+	if (SendCommand((uint32_t)IOBridge::Command::GetGPIOLevels, nullptr, 0, &v, sizeof(v), &got) && got >= 1)
+		m_lastGPIOLevels = v;
+	return m_lastGPIOLevels;
+}
+
+BOOL CIOControllerProxy::OpenInfusionSwitch() { return SendCommand((uint32_t)IOBridge::Command::OpenInfusionSwitch, nullptr, 0, nullptr, 0, nullptr); }
+BOOL CIOControllerProxy::CloseInfusionSwitch() { return SendCommand((uint32_t)IOBridge::Command::CloseInfusionSwitch, nullptr, 0, nullptr, 0, nullptr); }
+BOOL CIOControllerProxy::OpenDisinfectSwitch() { return SendCommand((uint32_t)IOBridge::Command::OpenDisinfectSwitch, nullptr, 0, nullptr, 0, nullptr); }
+BOOL CIOControllerProxy::CloseDisinfectSwitch() { return SendCommand((uint32_t)IOBridge::Command::CloseDisinfectSwitch, nullptr, 0, nullptr, 0, nullptr); }
+BOOL CIOControllerProxy::OpenLaserSwitch() { return SendCommand((uint32_t)IOBridge::Command::OpenLaserSwitch, nullptr, 0, nullptr, 0, nullptr); }
+BOOL CIOControllerProxy::CloseLaserSwitch() { return SendCommand((uint32_t)IOBridge::Command::CloseLaserSwitch, nullptr, 0, nullptr, 0, nullptr); }
+
+BOOL CIOControllerProxy::GetInfusionSensorState()
+{
+	uint8_t v = 0;
+	DWORD got = 0;
+	return SendCommand((uint32_t)IOBridge::Command::GetInfusionSensorState, nullptr, 0, &v, sizeof(v), &got) && got >= 1 ? (v != 0) : FALSE;
+}
+
+BOOL CIOControllerProxy::GetDisinfectSensorState()
+{
+	uint8_t v = 0;
+	DWORD got = 0;
+	return SendCommand((uint32_t)IOBridge::Command::GetDisinfectSensorState, nullptr, 0, &v, sizeof(v), &got) && got >= 1 ? (v != 0) : FALSE;
+}
+
+BOOL CIOControllerProxy::GetLaserSensorState()
+{
+	uint8_t v = 0;
+	DWORD got = 0;
+	return SendCommand((uint32_t)IOBridge::Command::GetLaserSensorState, nullptr, 0, &v, sizeof(v), &got) && got >= 1 ? (v != 0) : FALSE;
+}
+
+BOOL CIOControllerProxy::GetInfusionSwitchState()
+{
+	IOBridge::SwitchStates st{};
+	DWORD got = 0;
+	if (SendCommand((uint32_t)IOBridge::Command::GetSwitchStates, nullptr, 0, &st, sizeof(st), &got) && got >= sizeof(st))
+		m_lastInfusionOpen = st.infusionOpen ? TRUE : FALSE;
+	return m_lastInfusionOpen;
+}
+
+BOOL CIOControllerProxy::GetDisinfectSwitchState()
+{
+	IOBridge::SwitchStates st{};
+	DWORD got = 0;
+	if (SendCommand((uint32_t)IOBridge::Command::GetSwitchStates, nullptr, 0, &st, sizeof(st), &got) && got >= sizeof(st))
+		m_lastDisinfectOpen = st.disinfectOpen ? TRUE : FALSE;
+	return m_lastDisinfectOpen;
+}
+
+BOOL CIOControllerProxy::GetLaserSwitchState()
+{
+	IOBridge::SwitchStates st{};
+	DWORD got = 0;
+	if (SendCommand((uint32_t)IOBridge::Command::GetSwitchStates, nullptr, 0, &st, sizeof(st), &got) && got >= sizeof(st))
+		m_lastLaserOpen = st.laserOpen ? TRUE : FALSE;
+	return m_lastLaserOpen;
+}
+
+CString CIOControllerProxy::GetHardwareStateText() const
+{
+	return m_bConnected ? _T("已连接(IOBridge)") : _T("未连接");
+}

@@ -1,0 +1,91 @@
+﻿# 流程控制阶段｜项目运行流程图（Mermaid）
+
+> 说明：这是“流程控制阶段”的整体运行流程（从打开流程面板 → 参数 → 启动线程 → Step1~Step7 → 结束/异常）。
+> 
+> - 代码层对应：`CProcedureDlg`（UI） + `CProcedureController`（流程线程）
+> - 图里只保留关键判断与关键动作，方便导入 XMind 或渲染成流程图。
+
+```mermaid
+flowchart TD
+    A([流程控制面板打开\nCProcedureDlg::OnInitDialog()]) --> B[初始化UI控件\nInitializeControls()\n(列表/进度条/实时监控初始值)]
+    B --> C[加载配置参数\nLoadProcedureParams()\n(从 config.ini → m_params)]
+    C --> D[初始化流程控制器\nInitializeController()\n(注入机械臂/232/485/I-O/视觉)]
+    D --> E[启动定时刷新\nSetTimer(200ms)\nUpdateProcedureStatus/UpdateRealTimeData]
+
+    %% --------- 参数编辑/保存阶段 ---------
+    E --> F{用户是否点击“保存参数”?}
+    F -->|是| F1[读取UI参数\nReadParamsFromUI()\n(编辑框→m_params)]
+    F1 --> F2{参数校验\nProcedureParams::Validate()\n(范围/逻辑/XY闭环参数)}
+    F2 -->|否| F3[弹窗提示\n参数无效\n(不写入INI/不更新控制器)]
+    F2 -->|是| F4[写入 config.ini\nSaveProcedureParams()] 
+    F4 --> F5[同步到控制器\nm_controller.SetParams(m_params)]
+    F5 --> E
+    F -->|否| G{用户是否点击“开始完整流程”?}
+
+    %% --------- 启动完整流程 ---------
+    G -->|否| E
+    G -->|是| G1[再次读取UI参数\nReadParamsFromUI()\n(确保启动时用最新值)]
+    G1 --> G2{参数校验\nValidate()} 
+    G2 -->|否| G3[弹窗提示\n参数无效\n(阻止启动)]
+    G2 -->|是| G4[推送参数到控制器\nm_controller.SetParams(m_params)]
+    G4 --> G5{硬件就绪?\n(机械臂/串口/I-O)}
+    G5 -->|否| G6[启动失败提示\n检查连接/串口/I-O]
+    G5 -->|是| H([启动流程线程\nCProcedureController::StartProcedure()])
+
+    %% --------- 流程线程：Step1~Step7 ---------
+    H --> S0[流程状态=RUNNING\nUI按钮锁定/禁用参数编辑]
+
+    S0 --> S1[Step1 视觉定位\nExecuteStep1_VisionLocate()\n(识别模型→坐标转换→移动到安全高度)]
+    S1 --> C1{Step1 成功?}
+    C1 -->|否| ER[进入 ERROR\n记录错误信息\n停止流程/回滚(如有)]
+    C1 -->|是| S2[Step2 激光粗调\nExecuteStep2_LaserCoarseAdjust()\n(开激光→读485→Z轴调整到目标±粗调)]
+
+    S2 --> C2{Step2 成功?}
+    C2 -->|否| ER
+    C2 -->|是| S3[Step3 识别穿刺点\nExecuteStep3_DetectPuncturePoint()\n(关激光→识别穿刺点→记录点位/姿态)]
+
+    S3 --> C3{Step3 成功?}
+    C3 -->|否| ER
+    C3 -->|是| S4[Step4 精准对位\nExecuteStep4_PreciseAlignment()\n(到穿刺点上方→可选XY闭环→Z精调到±精调)]
+
+    S4 --> C4{Step4 成功?}
+    C4 -->|否| ER
+    C4 -->|是| S5[Step5 消毒\nExecuteStep5_Disinfection()\n(I/O开阀→等待→关阀)]
+
+    S5 --> C5{Step5 成功?}
+    C5 -->|否| ER
+    C5 -->|是| S6[Step6 穿刺电机\nExecuteStep6_Puncture()\n(232发送MR-深度\n→超时等待完成)]
+
+    S6 --> C6{Step6 成功?}
+    C6 -->|否| ER
+    C6 -->|是| S7[Step7 打开输液阀\nExecuteStep7_Infusion()\n(I/O打开输液阀)]
+
+    S7 --> C7{Step7 成功?}
+    C7 -->|否| ER
+    C7 -->|是| OK([流程状态=COMPLETED\n记录完成日志\nUI恢复可编辑])
+
+    %% --------- 暂停/停止/急停（线程控制） ---------
+    S0 --> P{用户点击“暂停/恢复”?}
+    P -->|是| P1[控制器收到 Pause\nPauseProcedure()\n线程进入等待状态]
+    P1 --> P2{用户点击“恢复”?}
+    P2 -->|是| P3[ResumeProcedure()\n线程继续]
+    P2 -->|否| P1
+    P -->|否| T{用户点击“停止”?}
+
+    T -->|是| T1[StopProcedure()\n设置停止标志\n线程安全退出]
+    T1 --> STOP([流程状态=STOPPED\nUI恢复可编辑])
+    T -->|否| ES{用户点击“急停”?}
+
+    ES -->|是| ES1[EmergencyStop()\n立即停机械臂/关闭IO\n停止线程]
+    ES1 --> STOP
+    ES -->|否| S0
+
+    %% --------- 实时监控刷新说明 ---------
+    E --> RT[实时监控刷新\nUpdateRealTimeData()\n- RUNNING/PAUSED: 读控制器缓存(避免争用)\n- IDLE/STOP等: 可直接读485/读机械臂]
+    RT --> E
+```
+
+## 节点说明（简短）
+- “保存参数”和“开始流程”都会走 `Validate()`：参数不合法直接拦截，避免流程跑到一半出危险动作。
+- `RUNNING/PAUSED` 状态下 UI 不直接读 485/机械臂：改读控制器缓存，避免和流程线程抢串口导致“读帧错乱”。
+- Step4 的 XY 闭环是可选的：由 `bEnableXYAlign` 控制；没启用时只做 Z 精调。

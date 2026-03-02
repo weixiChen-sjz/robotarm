@@ -1,0 +1,71 @@
+﻿# MFCApplication1 项目框架（XMind 导入用｜精简版）
+
+## 项目总览（一句话）
+- 医疗穿刺机器人自动化控制系统：UI 面板控制 7 步流程，流程线程驱动设备（机械臂/串口/I/O/视觉），参数可保存到 `config.ini`。
+
+## 1) UI 与交互（人机界面）
+### `CMFCApplication1Dlg`（主界面｜设备连接与入口）
+- 做什么：集中管理 232/485/I/O/机械臂连接，并提供“打开流程控制面板”的入口。
+- 关键交互：点击 `IDC_BUTTON_OPEN_PROCEDURE` → 创建/显示 `CProcedureDlg`。
+
+### `CProcedureDlg`（流程面板｜参数+运行+单步+监控）
+- 做什么：操作 7 步流程（开始/暂停/停止/急停），配置流程参数，提供单步调试，并显示实时监控。
+
+#### 关键函数（为什么重要）
+- `OnInitDialog()`：面板初始化入口（加载参数→初始化控制器→启动 200ms 定时刷新）。
+- `OnTimer()`：周期刷新 UI（状态+实时数据）。
+- `ReadParamsFromUI()`：把编辑框里的参数读入 `m_params`（这是“你输入的目标高度”进入程序内存的入口）。
+- `SaveProcedureParams()`：写入 `config.ini`，并 `m_controller.SetParams(m_params)`（这是“保存后控制器实际使用新参数”的入口）。
+- `OnBnClickedButtonStartProcedure()`：开始完整流程（把当前 UI 参数推给控制器再启动）。
+- `UpdateRealTimeData()`：实时监控刷新（显示激光距离/误差/目标高度/XY 等）。
+
+#### 实时监控（你在界面看到的是什么）
+- `IDC_STATIC_TARGET_HEIGHT`：显示当前 `m_params.fTargetHeight`（可动态更新；不要用 `IDC_STATIC(-1)` 固定文案）。
+- `IDC_STATIC_LASER_DISTANCE`：显示激光距离（空闲时可直接读 485；运行时读控制器缓存）。
+- `IDC_STATIC_DISTANCE_ERROR`：显示距离误差（通常 = 测得距离 - 目标高度）。
+
+## 2) 流程控制（7步流程的大脑）
+### `CProcedureController`（流程控制器｜线程执行与设备协调）
+- 做什么：在独立线程执行 7 步流程；提供暂停/恢复/停止/急停；对 UI 提供“最近一次数据缓存”。
+
+#### 关键函数（为什么重要）
+- `SetParams(const ProcedureParams&)`：控制器内部保存流程参数（流程运行实际用它，不直接用 UI 输入框）。
+- `StartProcedure()`：创建流程线程并按 Step1~Step7 顺序运行。
+- `ExecuteStep(int step)`：单步执行入口（被 UI 单步测试按钮调用）。
+- `GetLaserDistance()`：统一的 485 激光测距读取（UI/流程共用，避免重复协议实现）。
+- `GetLastLaserReading(...)` / `GetLastRobotPosition(...)` / `GetLastXYError(...)`：运行态 UI 用的缓存数据源（避免 UI 抢串口/抢机械臂导致帧错乱）。
+
+### 7 步流程（只保留关键句）
+- Step1 `ExecuteStep1_VisionLocate()`：视觉定位→坐标转换→机械臂移动到目标上方（安全高度）。
+- Step2 `ExecuteStep2_LaserCoarseAdjust()`：开激光→读取 485 距离→粗调 Z 到目标高度±粗调容差。
+- Step3 `ExecuteStep3_DetectPuncturePoint()`：关激光→识别穿刺点→记录穿刺点位置。
+- Step4 `ExecuteStep4_PreciseAlignment()`：到穿刺点上方→（可选）XY 微调→Z 精调到±精调容差。
+- Step5 `ExecuteStep5_Disinfection()`：I/O 打开消毒阀→等待→关闭。
+- Step6 `ExecuteStep6_Puncture()`：232 发送电机指令 `MR-深度`→超时等待完成。
+- Step7 `ExecuteStep7_Infusion()`：I/O 打开输液阀。
+
+## 3) 设备与协议（流程能跑起来的底座）
+### `IRobotArmController` / `CRobotArmController`（机械臂 TCP/IP）
+- 做什么：将“目标位姿（X/Y/Z/可选Theta）+速度”转成机械臂移动指令。
+- 关键函数：`MoveTo(...)`（流程所有移动最终都会落到这里）。
+
+### `CSerialPort`（串口：232/485）
+- 做什么：统一串口收发封装。
+- 485 激光：`ParseLaserDistance(...)`（解析测距响应并换算为 mm）。
+- 232 电机：发送 `MR-xxxx\r\n`（穿刺深度命令）。
+
+### `CIOController`（阀门/激光电源等开关量）
+- 做什么：流程 Step2/3/5/7 依赖的 I/O 开关操作入口。
+
+### `IVisionSystem` / `CMockVisionSystem`（视觉）
+- 做什么：提供模型/穿刺点检测与坐标转换的抽象接口；当前用 Mock 占位，后续可替换 RealSense/YOLO。
+
+## 4) 参数与配置（你设置的“目标高度”最终去哪）
+### `ProcedureParams`
+- 做什么：承载目标高度、容差、深度、时间、安全高度、视觉开关等参数，并提供 `Validate()` 校验。
+### `config.ini`
+- 做什么：保存/加载流程参数，保证下次打开面板参数一致。
+
+## 5) 日志（排错与追溯）
+### `CLogManager`
+- 做什么：统一日志入口；流程面板通过订阅机制实时显示日志。

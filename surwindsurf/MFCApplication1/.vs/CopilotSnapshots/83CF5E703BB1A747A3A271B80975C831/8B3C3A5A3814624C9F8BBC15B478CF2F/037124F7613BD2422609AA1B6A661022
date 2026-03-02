@@ -1,0 +1,77 @@
+﻿#pragma once
+
+// 流程参数结构定义
+// 用于配置7步穿刺流程的所有参数
+
+struct ProcedureParams
+{
+	// ========== 步骤2：激光粗调参数 ==========
+	float fTargetHeight;        // 目标高度（默认100mm）
+	float fCoarseTolerance;     // 粗调精度（默认±2mm）
+	
+	// ========== 步骤4：精准对位参数 ==========
+	float fFineTolerance;       // 精调精度（默认±0.2mm）
+	int nMaxAdjustCount;        // 最大调整次数（默认50次）
+	
+	// ========== 步骤5：消毒参数 ==========
+	float fDisinfectTime;       // 消毒时间（默认2秒）
+	
+	// ========== 步骤6：穿刺参数 ==========
+	float fPunctureDepth;       // 穿刺深度（默认50mm）
+	float fPunctureSpeed;       // 穿刺速度（默认50%）
+	
+	// ========== 安全参数 ==========
+	float fSafeHeight;          // 安全高度（默认100mm）
+	BOOL bEnableVision;         // 是否启用视觉系统（默认FALSE）
+	
+	// ========== 超时设置 ==========
+	int nStepTimeout;           // 单步超时时间（秒，默认30秒）
+	
+	// 构造函数：设置默认值
+	ProcedureParams()
+	{
+		// 步骤2：激光粗调
+		fTargetHeight = 100.0f;      // 100mm
+		fCoarseTolerance = 2.0f;     // ±2mm
+		
+		// 步骤4：精准对位
+		fFineTolerance = 0.2f;       // ±0.2mm
+		nMaxAdjustCount = 50;        // 最大50次调整
+		
+		// 步骤5：消毒
+		fDisinfectTime = 2.0f;       // 2秒
+		
+		// 步骤6：穿刺
+		fPunctureDepth = 50.0f;      // 50mm
+		fPunctureSpeed = 50.0f;      // 50%速度
+		
+		// 安全参数
+		fSafeHeight = 100.0f;        // 100mm安全高度
+		bEnableVision = FALSE;       // 默认不启用视觉
+		
+		// 超时设置
+		nStepTimeout = 30;           // 30秒超时
+	}
+	
+	// 验证参数有效性
+	BOOL Validate() const
+	{
+		// 检查高度参数（扩大范围以支持1000mm等大值）
+		if (fTargetHeight < 0 || fTargetHeight > 2000) return FALSE;  // 支持0-2000mm
+		if (fSafeHeight < 0 || fSafeHeight > 2000) return FALSE;      // 支持0-2000mm
+		
+		// 检查精度参数
+		if (fCoarseTolerance <= 0 || fCoarseTolerance > 50) return FALSE;  // 支持0-50mm
+		if (fFineTolerance <= 0 || fFineTolerance > 10) return FALSE;       // 支持0-10mm
+		
+		// 检查时间参数
+		if (fDisinfectTime < 0 || fDisinfectTime > 60) return FALSE;
+		if (nStepTimeout < 1 || nStepTimeout > 300) return FALSE;
+		
+		// 检查穿刺参数（扩大范围以支持1000mm等大值）
+		if (fPunctureDepth < 0 || fPunctureDepth > 2000) return FALSE;  // 支持0-2000mm
+		if (fPunctureSpeed < 0 || fPunctureSpeed > 100) return FALSE;
+		
+		return TRUE;
+	}
+};

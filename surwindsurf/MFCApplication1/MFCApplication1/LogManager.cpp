@@ -1,0 +1,276 @@
+#include "pch.h"
+#include "LogManager.h"
+#include <time.h>
+
+CLogManager& CLogManager::GetInstance()
+{
+    static CLogManager instance;
+    return instance;
+}
+
+CLogManager::CLogManager()
+	: m_bEnableFileLog(TRUE)  // ★ 新增：默认启用文件日志
+{
+    InitializeCriticalSection(&m_cs);
+    InitializeCriticalSection(&m_csFile);  // ★ 新增：初始化文件临界区
+    
+    // ★ 新增：初始化日志文件
+    InitializeLogFile();
+}
+
+CLogManager::~CLogManager()
+{
+    DeleteCriticalSection(&m_cs);
+    DeleteCriticalSection(&m_csFile);  // ★ 新增：删除文件临界区
+}
+
+void CLogManager::InitializeLogFile()
+{
+	// 获取程序目录
+	TCHAR szPath[MAX_PATH];
+	GetModuleFileName(NULL, szPath, MAX_PATH);
+	PathRemoveFileSpec(szPath);
+	
+	// 创建logs子目录
+	CString strLogDir;
+	strLogDir.Format(_T("%s\\logs"), szPath);
+	CreateDirectory(strLogDir, NULL);
+	
+	// 生成日志文件名（按日期）
+	SYSTEMTIME st;
+	GetLocalTime(&st);
+	
+	m_strLogFilePath.Format(_T("%s\\log_%04d%02d%02d.txt"),
+		strLogDir,
+		st.wYear,
+		st.wMonth,
+		st.wDay);
+	
+	// 写入日志文件头
+	EnterCriticalSection(&m_csFile);
+	CStdioFile file;
+	if (file.Open(m_strLogFilePath, CFile::modeCreate | CFile::modeWrite | CFile::modeNoTruncate | CFile::typeText))
+	{
+		file.SeekToEnd();
+		
+		CString strHeader;
+		strHeader.Format(
+			_T("\r\n========================================\r\n")
+			_T("医疗穿刺机器人系统 - 日志文件\r\n")
+			_T("启动时间: %04d-%02d-%02d %02d:%02d:%02d\r\n")
+			_T("========================================\r\n\r\n"),
+			st.wYear, st.wMonth, st.wDay,
+			st.wHour, st.wMinute, st.wSecond);
+		
+		file.WriteString(strHeader);
+		file.Close();
+	}
+	LeaveCriticalSection(&m_csFile);
+}
+
+// ★ 新增：写入日志到文件
+void CLogManager::WriteToFile(const LogEntry& entry)
+{
+	if (!m_bEnableFileLog || m_strLogFilePath.IsEmpty())
+	{
+		return;
+	}
+	
+	EnterCriticalSection(&m_csFile);
+	
+	try
+	{
+		CStdioFile file;
+		if (file.Open(m_strLogFilePath, CFile::modeWrite | CFile::modeCreate | CFile::modeNoTruncate | CFile::typeText))
+		{
+			file.SeekToEnd();
+			
+			CString strLine;
+			strLine.Format(_T("[%s] [%s] [%s] %s\r\n"),
+				entry.strTime,
+				GetLevelString(entry.level),
+				entry.strModule,
+				entry.strMessage);
+			
+			file.WriteString(strLine);
+			file.Close();
+		}
+	}
+	catch (...)
+	{
+		// 忽略文件写入错误，不影响主程序
+	}
+	
+	LeaveCriticalSection(&m_csFile);
+}
+
+void CLogManager::AddLog(const CString& strModule, LogLevel level, const CString& strMessage)
+{
+	std::vector<CallbackItem> callbacks;
+
+    EnterCriticalSection(&m_cs);
+
+    LogEntry entry;
+    entry.strTime = GetCurrentTimeString();
+    entry.strModule = strModule;
+    entry.level = level;
+    entry.strMessage = strMessage;
+
+    m_logs.push_back(entry);
+
+    // 限制日志数量，避免内存占用过大
+    if (m_logs.size() > 10000)
+    {
+        m_logs.erase(m_logs.begin());
+    }
+
+    callbacks = m_callbacks;
+
+    LeaveCriticalSection(&m_cs);
+
+    // ★ 新增：同时写入文件
+    WriteToFile(entry);
+    
+	// 通知订阅者（不在临界区内调用，避免UI回调重入导致死锁）
+	for (const auto& item : callbacks)
+	{
+		if (item.callback)
+		{
+			item.callback(entry, item.pUserData);
+		}
+	}
+}
+
+void CLogManager::ClearLogs()
+{
+    EnterCriticalSection(&m_cs);
+    m_logs.clear();
+    LeaveCriticalSection(&m_cs);
+}
+
+BOOL CLogManager::ExportToFile(const CString& strFilePath)
+{
+    EnterCriticalSection(&m_cs);
+
+    try
+    {
+        std::ofstream file;
+        file.open(strFilePath, std::ios::out | std::ios::trunc);
+        
+        if (!file.is_open())
+        {
+            LeaveCriticalSection(&m_cs);
+            return FALSE;
+        }
+
+        // 写入UTF-8 BOM
+        file << "\xEF\xBB\xBF";
+
+        // 写入表头
+        CStringA strHeader("时间\t模块\t级别\t消息\r\n");
+        file << strHeader.GetString();
+
+        // 写入日志内容
+        for (const auto& entry : m_logs)
+        {
+            CStringA strLine;
+            strLine.Format("%s\t%s\t%s\t%s\r\n",
+                CStringA(entry.strTime).GetString(),
+                CStringA(entry.strModule).GetString(),
+                CStringA(GetLevelString(entry.level)).GetString(),
+                CStringA(entry.strMessage).GetString());
+            
+            file << strLine.GetString();
+        }
+
+        file.close();
+        LeaveCriticalSection(&m_cs);
+        return TRUE;
+    }
+    catch (...)
+    {
+        LeaveCriticalSection(&m_cs);
+        return FALSE;
+    }
+}
+
+BOOL CLogManager::Subscribe(LogCallback callback, void* pUserData)
+{
+	if (!callback)
+	{
+		return FALSE;
+	}
+
+	EnterCriticalSection(&m_cs);
+	for (const auto& item : m_callbacks)
+	{
+		if (item.callback == callback && item.pUserData == pUserData)
+		{
+			LeaveCriticalSection(&m_cs);
+			return TRUE;
+		}
+	}
+
+	CallbackItem item;
+	item.callback = callback;
+	item.pUserData = pUserData;
+	m_callbacks.push_back(item);
+	LeaveCriticalSection(&m_cs);
+	return TRUE;
+}
+
+void CLogManager::Unsubscribe(LogCallback callback, void* pUserData)
+{
+	EnterCriticalSection(&m_cs);
+	for (auto it = m_callbacks.begin(); it != m_callbacks.end();)
+	{
+		if (it->callback == callback && it->pUserData == pUserData)
+		{
+			it = m_callbacks.erase(it);
+			continue;
+		}
+		++it;
+	}
+	LeaveCriticalSection(&m_cs);
+}
+
+void CLogManager::SetLogCallback(LogCallback callback, void* pUserData)
+{
+	// 兼容旧逻辑：当callback为nullptr时清空所有订阅；否则保证该订阅存在
+	if (callback == nullptr)
+	{
+		EnterCriticalSection(&m_cs);
+		m_callbacks.clear();
+		LeaveCriticalSection(&m_cs);
+		return;
+	}
+	Subscribe(callback, pUserData);
+}
+
+CString CLogManager::GetCurrentTimeString()
+{
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+
+    CString strTime;
+    strTime.Format(_T("%04d-%02d-%02d %02d:%02d:%02d.%03d"),
+        st.wYear, st.wMonth, st.wDay,
+        st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+
+    return strTime;
+}
+
+CString CLogManager::GetLevelString(LogLevel level)
+{
+    switch (level)
+    {
+    case LOG_INFO:
+        return _T("信息");
+    case LOG_WARNING:
+        return _T("警告");
+    case LOG_ERROR:
+        return _T("错误");
+    default:
+        return _T("未知");
+    }
+}

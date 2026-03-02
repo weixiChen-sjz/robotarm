@@ -1,0 +1,239 @@
+﻿# 项目架构说明（MFC医疗穿刺机器人自动化控制系统）
+
+本文档说明当前工程的整体框架、7步流程的代码路径、各模块职责，以及后续接入 **RealSense D435** 与替换不同型号 **机械臂** 时需要实现/替换的接口清单。
+
+---
+
+## 1. 总体结构
+
+工程采用典型的“UI层 + 控制器层 + 设备抽象层”的分层方式：
+
+- **UI 层**：
+  - `CMFCApplication1Dlg`：主界面，负责设备连接与手动控制入口（232/485/I/O/机械臂）。
+  - `CProcedureDlg`：流程控制面板，负责参数配置、启动/停止流程、单步测试、显示步骤监控与实时数据。
+
+- **流程控制层**：
+  - `CProcedureController`：7步流程核心逻辑；内部线程执行流程，支持暂停/停止/急停。
+
+- **设备抽象/驱动层**：
+  - 串口：`CSerialPort`（232、485共用），包含激光测距解析与协议处理。
+  - I/O：`CIOController`（输液阀/消毒液/激光开关等）。
+  - 机械臂：`IRobotArmController`（抽象接口）+ `CRobotArmController`（现有TCP示例实现）。
+  - 视觉：`IVisionSystem`（抽象接口）+ `CMockVisionSystem`（模拟实现，占位）。
+
+---
+
+## 2. 关键数据流
+
+### 2.1 流程参数
+
+- 参数结构：`ProcedureParams`
+- UI侧：`CProcedureDlg` 负责从输入框读取/显示/保存到 `config.ini`。
+- 流程侧：`CProcedureController::SetParams(const ProcedureParams&)` 更新运行参数。
+
+与 Step4 相关的关键参数：
+- `fTargetHeight`：目标高度（mm）
+- `fCoarseTolerance`：粗调阈值（mm）
+- `fFineTolerance`：精调阈值（mm）
+- `fSafeHeight`：安全高度（mm）
+- `bEnableVision`：启用视觉系统
+- `bEnableXYAlign`：启用 Step4 的 XY 闭环（已与 UI 的“启用视觉系统”勾选联动）
+- `fMmPerPixelX / fMmPerPixelY`：mm/px标定系数（XY闭环）
+- `nXYPixelThreshold / fXYMaxStepMm / fXYMinStepMm / nXYMaxIters`：XY闭环配置
+
+### 2.2 步骤3输出
+
+- `CProcedureController` 内部会在 Step3 保存穿刺点位姿：
+  - `RobotArmPosition m_puncturePoint`
+
+Step4 会使用此位姿执行“移动到穿刺点上方（安全高度）”并进入 XY/Z 精调。
+
+---
+
+## 3. UI 与控制器初始化关系
+
+### 3.1 流程面板初始化
+
+入口：`CProcedureDlg::OnInitDialog()`
+- `InitializeControls()`
+- `LoadProcedureParams()`
+- `InitializeController()`
+- `SetTimer()` 定时刷新 UI
+
+### 3.2 注入硬件与视觉
+
+入口：`CProcedureDlg::InitializeController()`
+- 注入设备：
+  - `m_controller.SetRobotArm(pMainDlg->GetRobotArmController());`
+  - `m_controller.SetSerial232(&pMainDlg->m_serial232);`
+  - `m_controller.SetSerial485(&pMainDlg->m_serial485);`
+  - `m_controller.SetIOController(&pMainDlg->m_ioController);`
+- 注入视觉：
+  - 当前如果 `m_params.bEnableVision == TRUE`，注入 `CMockVisionSystem`（后续替换为真实视觉类）。
+
+### 3.3 启用视觉与 XY 闭环联动
+
+- UI 勾选 `IDC_CHECK_ENABLE_VISION` → `CProcedureDlg::OnBnClickedCheckEnableVision()`
+- 联动逻辑：
+  - `m_params.bEnableVision = bEnable;`
+  - `m_params.bEnableXYAlign = bEnable;`
+  - `InitializeController()`（重新注入/释放视觉系统）
+
+---
+
+## 4. 7步流程总览（代码路径）
+
+流程控制器：`CProcedureController`
+
+- 启动完整流程：
+  - UI：`CProcedureDlg::OnBnClickedButtonStartProcedure()`
+  - 控制器：`CProcedureController::StartProcedure()`（启动线程）
+
+- 单步测试：
+  - UI：`CProcedureDlg::OnBnClickedButtonStepXTest()`
+  - 控制器：`CProcedureController::ExecuteStep(stepNumber)`
+
+### Step1：视觉定位
+- 函数：`ExecuteStep1_VisionLocate()`
+- 依赖：`IVisionSystem::DetectModel()`
+
+### Step2：激光粗调（Z轴）
+- 函数：`ExecuteStep2_LaserCoarseAdjust()`
+- 依赖：485测距 `GetLaserDistance()` + 机械臂 Z 移动
+- 容错：读取失败计数，连续失败中止并关闭激光
+
+### Step3：识别穿刺点 + 姿态
+- 函数：`ExecuteStep3_DetectPuncturePoint()`
+- 依赖：`IVisionSystem::DetectPuncturePoint()`、`GetPunctureAngle()` 等
+- 输出：保存 `m_puncturePoint`
+
+### Step4：精准对位（XY + Z）
+- 函数：`ExecuteStep4_PreciseAlignment()`
+- 结构：
+  1) 移动到穿刺点上方（安全高度）
+  2) **XY闭环（可选）**：`ExecuteStep4_XYAlign()`（IR像素闭环）
+  3) Z 精调：485测距闭环到 `fFineTolerance`
+
+#### Step4 XY闭环（IR像素闭环）
+- 函数：`ExecuteStep4_XYAlign()`
+- 输入：
+  - `IVisionSystem::DetectLaserSpotPixelIR(u_l, v_l)`
+  - `IVisionSystem::DetectPuncturePointPixelIR(u_t, v_t)`
+- 计算：
+  - `dx = u_l - u_t`, `dy = v_l - v_t`
+  - `ΔX = -dx * fMmPerPixelX`, `ΔY = -dy * fMmPerPixelY`
+- 控制：机械臂 `MoveTo()` 小步迭代，直到像素阈值收敛
+
+### Step5：消毒
+- 函数：`ExecuteStep5_Disinfection()`
+- 依赖：`CIOController` 打开/关闭
+
+### Step6：穿刺电机
+- 函数：`ExecuteStep6_Puncture()`
+- 依赖：232串口 + 等待完成（`WaitForMotorComplete()`）
+
+### Step7：输液启动
+- 函数：`ExecuteStep7_Infusion()`
+- 依赖：`CIOController` 打开输液阀
+
+---
+
+## 5. 激光测距数据说明（485）
+
+- 解析函数：`CSerialPort::ParseLaserDistance()`
+- 距离换算（代码内说明）：
+  - 测量范围：120~280mm
+  - 零点：200mm
+  - 实际距离：`fDistance = 200.0f - fRawValue`
+
+- `CProcedureController::GetLaserDistance()` 负责完成：
+  - 发指令 → 收响应 → 找帧头/拼包 → 调用 `ParseLaserDistance()`
+  - 读取失败返回 `-1.0f`（明确错误值）
+
+---
+
+## 6. 接入 RealSense D435 的实现清单（最小可用）
+
+建议新增类：`CRealSenseVisionSystem : public IVisionSystem`
+
+### 6.1 Step4（XY闭环）必须实现
+
+1. `BOOL DetectLaserSpotPixelIR(int& u, int& v)`
+- 输入：IR帧
+- 输出：红外激光光斑中心像素
+- 典型算法：阈值 → 形态学 → 最大连通域 → 质心
+
+2. `BOOL DetectPuncturePointPixelIR(int& u, int& v)`
+- 输入：IR帧
+- 输出：穿刺点中心像素
+
+### 6.2 Step1/Step3（现有视觉流程）可逐步实现
+
+- `DetectModel(float& x, float& y, float& z)`
+- `DetectPuncturePoint(float& x, float& y, float& z)`
+- `GetPunctureAngle(...)`
+- `TransformCoordinate(...)`
+
+> 当前工程仍可先用 Step4 的 IR 像素闭环 + 485 Z 精调跑通“精对位”链路。
+
+### 6.3 替换注入点
+
+在 `CProcedureDlg::InitializeController()` 中替换：
+- `new CMockVisionSystem()` → `new CRealSenseVisionSystem()`
+
+---
+
+## 7. 替换机械臂型号的实现清单
+
+机械臂通过接口 `IRobotArmController` 抽象。
+
+### 7.1 必须实现的接口
+
+- 连接/断开：
+  - `BOOL Connect(const CString& ip, int port)`
+  - `void Disconnect()`
+- 初始化/回零：
+  - `BOOL Initialize()`
+  - `BOOL GoHome()`
+- 运动控制：
+  - `BOOL MoveTo(const RobotArmPosition& pos, int speed)`
+  - `BOOL Stop()`
+  - `BOOL EmergencyStop()`
+- 状态/位置：
+  - `RobotArmPosition GetCurrentPosition() const`
+  - `RobotArmState GetState() const`
+  - `BOOL IsConnected() const`
+
+### 7.2 替换方式建议
+
+- 方案A（最小改动）：直接把 `CMFCApplication1Dlg` 的 `m_robotArm` 替换成你的新实现类对象。
+- 方案B（更灵活）：改为 `std::unique_ptr<IRobotArmController>`，运行时按型号选择实例。
+
+---
+
+## 8. 如何启动 XY 精调
+
+### 8.1 UI 操作
+
+1) 在流程控制面板勾选 **启用视觉系统**（`IDC_CHECK_ENABLE_VISION`）
+- 会联动启用 `bEnableXYAlign`
+
+2) 执行 Step4：
+- 单步：点击“步骤4: 精准对位”
+- 或运行完整 7 步流程
+
+### 8.2 参数要求
+
+- `bEnableXYAlign = TRUE`
+- `fMmPerPixelX / fMmPerPixelY` 必须按现场高度标定（否则移动比例会偏）
+
+---
+
+## 9. 已知限制与后续建议
+
+- 当前 UI 中的 `IDC_STATIC_XY_ERROR` 仅为控件占位，尚未读取控制器内部 `m_lastDxPx/m_lastDyPx` 做实时刷新。
+- RealSense 接入后建议增加：
+  - IR曝光/增益控制
+  - 光斑检测置信度与失败重试
+  - mm/px 标定工具或引导流程
+

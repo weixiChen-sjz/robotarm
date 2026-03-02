@@ -1,0 +1,54 @@
+#pragma once
+
+#include <Windows.h>
+#include <stdint.h>
+
+#include "IIOController.h"
+
+class CIOControllerProxy : public IIOController
+{
+public:
+	CIOControllerProxy();
+	~CIOControllerProxy();
+
+	BOOL Initialize() override;
+	void ProcessGPIO() override;
+	void Shutdown() override;
+
+	BOOL IsOpen() const override { return m_bConnected; }
+	BOOL IsInitialized() const { return m_bConnected; }
+	BOOL IsHardwareConnected() const { return m_bConnected; }
+
+	BYTE GetGPIOLevels() override;
+
+	BOOL OpenInfusionSwitch() override;
+	BOOL CloseInfusionSwitch() override;
+	BOOL OpenDisinfectSwitch() override;
+	BOOL CloseDisinfectSwitch() override;
+	BOOL OpenLaserSwitch() override;
+	BOOL CloseLaserSwitch() override;
+
+	BOOL GetInfusionSensorState() override;
+	BOOL GetDisinfectSensorState() override;
+	BOOL GetLaserSensorState() override;
+
+	BOOL GetInfusionSwitchState() const override;
+	BOOL GetDisinfectSwitchState() const override;
+	BOOL GetLaserSwitchState() const override;
+
+	CString GetHardwareStateText() const override;
+
+	BOOL EnsureBridgeRunning();
+
+private:
+	HANDLE m_hPipe;
+	BOOL m_bConnected;
+	BYTE m_lastGPIOLevels;
+	BOOL m_lastInfusionOpen;
+	BOOL m_lastDisinfectOpen;
+	BOOL m_lastLaserOpen;
+
+	BOOL ConnectPipe();
+	void ClosePipe();
+	BOOL SendCommand(uint32_t cmd, const void* payload, DWORD payloadSize, void* outPayload, DWORD outPayloadCapacity, DWORD* outPayloadSize);
+};

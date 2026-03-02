@@ -1,0 +1,528 @@
+﻿# 硬件设备控制系统
+
+## 项目简介
+
+这是一个基于MFC（Microsoft Foundation Classes）开发的硬件设备控制系统，用于管理和控制多种硬件设备，包括串口通信（RS232/RS485）、机械臂和I/O接口。系统提供了友好的图形界面，支持实时日志记录和数据监控。
+
+## 主要功能
+
+### 1. 串口通信控制
+- **RS232串口控制**
+  - 支持COM1-COM8端口选择
+  - 可配置波特率：9600/19200/38400/57600/115200
+  - 可配置数据位：7位/8位
+  - 可配置停止位：1位/2位
+  - 可配置校验位：无/奇校验/偶校验
+  - 支持文本和十六进制数据发送/接收
+  - 实时数据显示和缓冲区清空功能
+
+- **RS485串口控制**
+  - 与RS232功能相同
+  - 适用于多设备总线通信
+  - 独立的发送/接收控制
+
+### 2. 机械臂控制
+- **连接管理**
+  - 串口连接配置
+  - 实时连接状态显示
+  
+- **基本操作**
+  - 初始化：设备初始化和参数配置
+  - 归零：返回原点位置
+  - 开始：执行移动命令
+  - 停止：正常停止运动
+  - 急停：紧急停止所有运动
+
+- **位置控制**
+  - X、Y、Z三轴坐标输入
+  - 速度调节（0-100%）
+  - 实时位置显示
+  - 预设位置快速切换（3个预设点）
+
+### 3. I/O接口控制（医疗设备）
+
+**🔒 安全特性：**
+- **硬件连接检测**：初始化时自动检测I/O硬件是否已连接
+- **写入保护**：未检测到硬件时无法控制开关，防止误操作
+- **按钮状态控制**：硬件未连接时自动禁用所有控制按钮
+- **模拟模式**：开发测试时可启用模拟模式，无需实际硬件
+
+- **输入通道（传感器监控）**
+  - 输液传感器：实时监控输液系统状态
+  - 消毒液传感器：实时监控消毒液系统状态
+  - 高/低电平状态显示
+
+- **输出通道（设备控制）**
+  - 输液开关：独立的打开/关闭按钮控制
+  - 消毒液开关：独立的打开/关闭按钮控制
+  - 实时状态反馈
+  
+- **设备映射**
+  - 通道0（输入1）→ 输液传感器
+  - 通道1（输入2）→ 消毒液传感器
+  - 通道2（输出1）→ 输液开关
+  - 通道3（输出2）→ 消毒液开关
+  - 详细映射说明请参考[设备映射配置文档](设备映射配置.md)
+  
+- **硬件状态监控**
+  - 实时显示硬件连接状态
+  - 未连接/已连接/模拟模式三种状态
+  - 详细安全机制请参考[硬件检测和安全机制文档](硬件检测和安全机制.md)
+
+### 4. 日志管理
+- **日志记录**
+  - 时间戳记录
+  - 模块分类（串口、机械臂、I/O、系统）
+  - 日志级别（信息、警告、错误）
+  - 彩色显示：信息（绿色）、警告（橙色）、错误（红色）
+
+- **日志操作**
+  - 自动限制日志条目数量（最多1000条）
+  - 导出日志到文本文件
+  - 清空日志功能
+
+## 系统架构
+
+### 核心类设计
+
+```
+MFCApplication1 (主程序)
+├── CMFCApplication1Dlg (主对话框)
+├── CSerialPort (串口通信类)
+├── CRobotArmController (机械臂控制类)
+├── CIOController (I/O控制类)
+└── CLogManager (日志管理类 - 单例模式)
+```
+
+### 文件结构
+
+```
+MFCApplication1/
+├── MFCApplication1.cpp          # 应用程序入口
+├── MFCApplication1.h            # 应用程序头文件
+├── MFCApplication1Dlg.cpp       # 主对话框实现
+├── MFCApplication1Dlg.h         # 主对话框头文件
+├── SerialPort.cpp               # 串口通信实现
+├── SerialPort.h                 # 串口通信头文件
+├── RobotArmController.cpp       # 机械臂控制实现
+├── RobotArmController.h         # 机械臂控制头文件
+├── IOController.cpp             # I/O控制实现
+├── IOController.h               # I/O控制头文件
+├── LogManager.cpp               # 日志管理实现
+├── LogManager.h                 # 日志管理头文件
+├── Resource.h                   # 资源ID定义
+├── MFCApplication1.rc           # 资源脚本文件
+├── README.md                    # 说明文档（本文件）
+├── IO控制使用指南.md            # I/O接口控制详细指南
+└── 设备映射配置.md               # 设备映射和硬件接线说明
+```
+
+## 使用说明
+
+### 系统要求
+- 操作系统：Windows 7/8/10/11
+- 开发环境：Visual Studio 2017或更高版本
+- 框架：MFC（Microsoft Foundation Classes）
+- 编译器：MSVC 14.0或更高版本
+
+### 编译步骤
+1. 使用Visual Studio打开 `MFCApplication1.sln`
+2. 选择配置（Debug/Release）和平台（x86/x64）
+3. 点击"生成" → "生成解决方案"（或按 Ctrl+Shift+B）
+4. 编译成功后在输出目录找到可执行文件
+
+### 运行步骤
+1. 双击运行 `MFCApplication1.exe`
+2. 系统自动初始化并显示主界面
+3. 根据需要配置各个模块
+
+### 操作指南
+
+#### 232串口通信
+1. 选择COM端口和通信参数
+2. 点击"打开"按钮建立连接
+3. 在发送框输入数据
+4. 勾选"十六进制"可切换数据格式
+5. 点击"发送"按钮发送数据
+6. 接收框实时显示接收的数据
+7. 点击"清空"清除接收缓冲区
+
+#### 485串口通信
+操作步骤与232串口相同，适用于多设备总线通信场景。
+
+#### 机械臂控制
+1. 选择机械臂串口和波特率
+2. 点击"连接"按钮建立通信
+3. 点击"初始化"完成设备初始化
+4. 点击"归零"使机械臂回到原点
+5. 输入目标X、Y、Z坐标
+6. 调节速度滑块设置运动速度
+7. 点击"开始"执行移动命令
+8. 使用"停止"或"急停"按钮控制运动
+9. 点击预设位置按钮快速填充坐标
+
+#### I/O接口控制
+1. 点击"初始化I/O"按钮初始化接口
+2. 系统会显示设备映射信息对话框
+3. 实时查看输液传感器和消毒液传感器状态
+4. 使用独立按钮控制输液开关和消毒液开关
+
+**详细操作说明：**
+
+**步骤1：初始化I/O控制器**
+- 点击界面上的"初始化I/O"按钮
+- 系统会初始化所有I/O通道（2个输入传感器 + 2个输出开关）
+- 初始化成功后会弹出设备映射信息对话框
+- 日志窗口会记录初始化结果
+
+**步骤2：查看传感器状态**
+- **输液传感器**：显示格式为"输液传感器: 低/高"
+  - 低 = 无液体流动或液位低
+  - 高 = 有液体流动或液位正常
+- **消毒液传感器**：显示格式为"消毒液传感器: 低/高"
+  - 低 = 无液体流动或液位低
+  - 高 = 有液体流动或液位正常
+- 传感器状态每200ms自动刷新（由状态更新定时器控制）
+
+**步骤3：控制输液系统**
+
+**打开输液开关：**
+1. 确保I/O控制器已初始化
+2. 确认输液传感器显示有液体（高电平）
+3. 点击"打开输液开关"按钮
+4. 显示格式："输液开关: 开"
+5. 输液泵/电磁阀开始工作
+6. 操作会在日志中记录
+
+**关闭输液开关：**
+1. 点击"关闭输液开关"按钮
+2. 显示格式："输液开关: 关"
+3. 输液泵/电磁阀停止工作
+4. 操作会在日志中记录
+
+**步骤4：控制消毒液系统**
+
+**打开消毒液开关：**
+1. 确保I/O控制器已初始化
+2. 确认消毒液传感器显示有液体（高电平）
+3. 点击"打开消毒液开关"按钮
+4. 显示格式："消毒液开关: 开"
+5. 消毒液泵/喷雾器开始工作
+6. 操作会在日志中记录
+
+**关闭消毒液开关：**
+1. 点击"关闭消毒液开关"按钮
+2. 显示格式："消毒液开关: 关"
+3. 消毒液泵/喷雾器停止工作
+4. 操作会在日志中记录
+
+**设备映射关系：**
+```
+I/O通道 → 物理设备
+───────────────────────────
+通道0（输入1）→ 输液传感器
+通道1（输入2）→ 消毒液传感器
+通道2（输出1）→ 输液开关（控制输液泵/电磁阀）
+通道3（输出2）→ 消毒液开关（控制消毒泵/喷雾器）
+```
+
+**代码层面的I/O控制（供开发者参考）：**
+
+```cpp
+// 通过代码控制医疗设备
+m_ioController.Initialize();  // 初始化
+
+// 输液系统控制
+m_ioController.OpenInfusionSwitch();   // 打开输液开关
+m_ioController.CloseInfusionSwitch();  // 关闭输液开关
+BOOL hasInfusion = m_ioController.GetInfusionSensorState();  // 读取输液传感器
+
+// 消毒液系统控制
+m_ioController.OpenDisinfectSwitch();   // 打开消毒液开关
+m_ioController.CloseDisinfectSwitch();  // 关闭消毒液开关
+BOOL hasDisinfect = m_ioController.GetDisinfectSensorState();  // 读取消毒液传感器
+
+// 底层通道控制（高级用法)
+m_ioController.WriteOutput(IO_DEVICE_INFUSION_OUTPUT, IO_STATE_HIGH);   // 通道2
+m_ioController.WriteOutput(IO_DEVICE_DISINFECT_OUTPUT, IO_STATE_HIGH);  // 通道3
+IOChannelState state = m_ioController.ReadInput(IO_DEVICE_INFUSION_INPUT);  // 通道0
+
+// 获取通道详细信息（包含设备名称）
+IOChannelInfo info;
+m_ioController.GetChannelInfo(2, info);  
+// info.strDeviceName = "输液开关"
+// info.state = IO_STATE_HIGH / IO_STATE_LOW
+```
+
+**设备映射常量：**
+```cpp
+#define IO_DEVICE_INFUSION_INPUT    0    // 输液传感器输入
+#define IO_DEVICE_DISINFECT_INPUT   1    // 消毒液传感器输入
+#define IO_DEVICE_INFUSION_OUTPUT   2    // 输液开关输出
+#define IO_DEVICE_DISINFECT_OUTPUT  3    // 消毒液开关输出
+```
+
+**注意事项：**
+- 必须先点击"初始化I/O"才能控制开关
+- 输入通道状态由外部传感器硬件决定，无法通过软件设置
+- 输出通道会在程序退出时自动设置为低电平（关闭），确保安全
+- 每次状态切换都会自动记录到日志中
+- 在模拟模式下，输入状态默认为低电平，可使用 `SimulateInputChange()` 方法测试
+- **重要**：开关控制涉及医疗设备，操作前请确认传感器状态正常
+
+**硬件接线说明：**
+详细的硬件接线和设备映射配置请参考 [设备映射配置文档](设备映射配置.md)
+
+#### 日志管理
+- 日志自动记录所有操作和事件
+- 点击"导出日志"保存到文件
+- 点击"清空日志"清除所有记录
+
+## 技术特性
+
+### 定时器机制
+- **状态更新定时器**：200ms刷新间隔，更新设备状态
+- **数据接收定时器**：100ms刷新间隔，接收串口数据
+
+### 线程安全
+- 串口通信采用异步I/O操作
+- 日志管理使用回调机制
+- 避免界面阻塞和数据冲突
+
+### 错误处理
+- 完整的异常捕获机制
+- 友好的错误提示对话框
+- 详细的错误日志记录
+
+### 界面特性
+- 响应式布局（800x600默认尺寸）
+- 支持窗口最大化/最小化
+- 控件分组清晰，操作直观
+- 中文界面，易于使用
+
+## 配置说明
+
+### 资源ID定义
+所有控件ID在 `Resource.h` 中定义，主要ID范围：
+- 对话框：100-199
+- 串口控件：1000-1021
+- 机械臂控件：1022-1038
+- I/O控件：1039-1048
+- 分组框：1049-1053
+
+### 预设位置配置
+机械臂预设位置在对话框构造函数中定义：
+```cpp
+m_presetPositions[0] = RobotArmPosition(100.0, 50.0, 30.0);  // 位置1
+m_presetPositions[1] = RobotArmPosition(150.0, 75.0, 45.0);  // 位置2
+m_presetPositions[2] = RobotArmPosition(200.0, 100.0, 60.0); // 位置3
+```
+
+### 日志限制
+- 显示缓冲区：最多1000条
+- 接收缓冲区：最多10000字符（自动截断到5000字符）
+
+## 开发指南
+
+### 添加新功能
+1. 在 `Resource.h` 中定义新的控件ID
+2. 在 `.rc` 文件中添加控件定义
+3. 在对话框头文件中声明消息处理函数
+4. 在对话框实现文件中添加消息映射和处理函数
+
+### 扩展串口数量
+在 `InitializeControls()` 函数中修改COM端口循环范围：
+```cpp
+for (int i = 1; i <= 16; i++)  // 支持COM1-COM16
+```
+
+### 自定义日志格式
+修改 `LogManager.cpp` 中的日志格式化代码，调整时间格式和输出内容。
+
+## 故障排查
+
+### 常见问题
+
+**问题1：串口打开失败**
+- 检查COM端口是否被其他程序占用
+- 确认端口号是否正确
+- 检查设备驱动是否正常安装
+
+**问题2：机械臂无响应**
+- 确认串口连接正常
+- 检查波特率是否匹配
+- 确认设备电源是否开启
+- 查看日志中的错误信息
+
+**问题3：I/O初始化失败**
+- 检查I/O设备是否正确连接
+- 确认驱动程序已安装
+- 查看系统设备管理器
+
+**问题4：I/O输入电平初始化时异常变高（已修复）**
+- **问题描述**：初始化I/O控制器时，输入通道有时会显示高电平而非预期的低电平
+- **根本原因**：模拟硬件读取函数中存在随机状态变化逻辑
+- **修复方案**：
+  - 移除了随机状态生成代码
+  - 初始化时确保所有输入通道默认为稳定的低电平
+  - 改进硬件模拟逻辑，保持状态稳定性
+  - 添加 `SimulateInputChange()` 测试方法用于手动模拟输入变化
+- **如何验证**：初始化I/O控制器后，输入1和输入2应始终显示"低"状态
+
+**问题5：程序崩溃或无法启动**
+- 确认所有DLL文件完整
+- 检查VC++运行时库是否已安装
+- 以管理员权限运行程序
+
+### 日志分析
+- **绿色（信息）**：正常操作记录
+- **橙色（警告）**：需要注意的事件（如急停）
+- **红色（错误）**：操作失败或异常
+
+## 版本历史
+
+### v1.1.0 (2024)
+- **重大更新**：I/O控制专门用于医疗设备管理
+  - 更改为输液开关和消毒液开关专用控制
+  - 添加设备映射配置（输液传感器、消毒液传感器）
+  - 将切换按钮改为独立的打开/关闭按钮
+  - 添加业务层封装方法（OpenInfusionSwitch等）
+  - 创建详细的设备映射配置文档
+  - 更新用户界面文字和提示信息
+- **新增文档**：设备映射配置.md - 包含硬件接线指南
+- **改进**：初始化时显示设备映射信息对话框
+
+### v1.0.1 (2024)
+- **修复**：I/O输入通道初始化时电平异常问题
+  - 移除了模拟硬件读取中的随机状态变化
+  - 确保初始化时输入通道稳定在低电平
+  - 改进了硬件模拟逻辑的稳定性
+- **新增**：添加 `SimulateInputChange()` 测试方法用于手动模拟输入状态变化
+
+### v1.0 (2024)
+- 初始版本发布
+- 实现基本的串口通信功能
+- 实现机械臂控制功能
+- 实现I/O接口控制功能
+- 实现日志管理功能
+- 完整的GUI界面
+
+## 许可证
+
+版权所有 (C) 2024
+
+## 联系方式
+
+如有问题或建议，请通过以下方式联系：
+- 项目主页：[待补充]
+- 问题反馈：[待补充]
+- 邮箱：[待补充]
+
+## 相关文档
+
+- **[设备映射配置](设备映射配置.md)** - I/O通道与医疗设备映射关系、硬件接线指南
+- **[I/O控制使用指南](IO控制使用指南.md)** - I/O接口详细操作说明、API使用和代码示例
+- **[主README](README.md)** - 完整系统文档（当前文件）
+
+## 附录
+
+### API参考
+
+#### CSerialPort类
+```cpp
+BOOL Open(int nPort, int nBaudRate, int nDataBits, int nStopBits, int nParity);
+void Close();
+BOOL IsOpen() const;
+BOOL SendData(const char* pData, DWORD dwSize);
+BOOL ReceiveData(char* pBuffer, DWORD dwBufferSize, DWORD& dwBytesRead);
+void ClearBuffer();
+```
+
+#### CRobotArmController类
+```cpp
+BOOL Connect(int nPort, int nBaudRate);
+void Disconnect();
+BOOL IsConnected() const;
+BOOL Initialize();
+BOOL GoHome();
+BOOL MoveTo(const RobotArmPosition& pos, int nSpeed);
+BOOL Stop();
+BOOL EmergencyStop();
+void SetSpeed(int nSpeed);
+RobotArmState GetState() const;
+RobotArmPosition GetCurrentPosition() const;
+```
+
+#### CIOController类
+```cpp
+BOOL Initialize();
+void Shutdown();
+BOOL IsInitialized() const;
+
+// 底层通道控制
+BOOL WriteOutput(int nChannel, IOChannelState state);
+IOChannelState ReadInput(int nChannel);
+BOOL GetChannelInfo(int nChannel, IOChannelInfo& info);
+void RefreshInputs();
+
+// 业务层封装（医疗设备控制）
+BOOL OpenInfusionSwitch();      // 打开输液开关
+BOOL CloseInfusionSwitch();     // 关闭输液开关
+BOOL OpenDisinfectSwitch();     // 打开消毒液开关
+BOOL CloseDisinfectSwitch();    // 关闭消毒液开关
+BOOL GetInfusionSensorState();  // 获取输液传感器状态
+BOOL GetDisinfectSensorState(); // 获取消毒液传感器状态
+
+// 测试方法（仅用于模拟环境）
+void SimulateInputChange(int nChannelId, IOChannelState newState);
+```
+
+#### CLogManager类
+```cpp
+static CLogManager& GetInstance();
+void AddLog(const CString& strModule, LogLevel level, const CString& strMessage);
+void SetLogCallback(LogCallback callback, void* pUserData);
+BOOL ExportToFile(const CString& strFilePath);
+void ClearLogs();
+```
+
+### 数据结构
+
+#### RobotArmPosition
+```cpp
+struct RobotArmPosition
+{
+    double X;
+    double Y;
+    double Z;
+};
+```
+
+#### IOChannelInfo
+```cpp
+struct IOChannelInfo
+{
+    int nChannel;
+    IOChannelType type;
+    IOChannelState state;
+    CString strName;          // 通道名称（如"输入1"）
+    CString strDeviceName;    // 设备名称（如"输液传感器"）
+};
+```
+
+#### LogEntry
+```cpp
+struct LogEntry
+{
+    CString strTime;
+    CString strModule;
+    LogLevel level;
+    CString strMessage;
+};
+```
+
+---
+
+**文档版本：** 1.0  
+**最后更新：** 2024年  
+**文档语言：** 简体中文

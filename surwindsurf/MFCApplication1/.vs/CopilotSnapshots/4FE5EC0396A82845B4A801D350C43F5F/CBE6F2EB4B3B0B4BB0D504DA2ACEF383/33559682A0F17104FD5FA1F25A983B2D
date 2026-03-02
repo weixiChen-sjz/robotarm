@@ -1,0 +1,742 @@
+﻿#include "pch.h"
+#include "IOController.h"
+#include "LogManager.h"
+#include <setupapi.h>
+#include <devguid.h>
+
+#pragma comment(lib, "setupapi.lib")
+#pragma comment(lib, "EVOC_BPI_DLL.lib")  // 链接GPIO库文件
+
+CIOController::CIOController()
+    : m_bInitialized(FALSE)
+    , m_hwState(IO_HW_DISCONNECTED)
+    , m_hDevice(INVALID_HANDLE_VALUE)
+    , m_bGPIOInitialized(FALSE)
+    , m_lastInputLevels(0)
+    , m_currentOutputLevels(0)
+{
+    // 初始化通道信息
+    for (int i = 0; i < 4; i++)
+    {
+        m_channels[i].nChannelId = i;
+        m_channels[i].state = IO_STATE_UNKNOWN;
+        
+        if (i < 2)  // 输入通道
+        {
+            m_channels[i].type = IO_TYPE_INPUT;
+            m_channels[i].nGPIOBit = i;  // bit 0, 1
+            m_channels[i].nGPIOPin = i + 1;  // pin 1, 2
+            
+            if (i == 0)  // 输液传感器
+            {
+                m_channels[i].strName = _T("输入1");
+                m_channels[i].strDeviceName = _T("输液传感器");
+            }
+            else  // 消毒液传感器
+            {
+                m_channels[i].strName = _T("输入2");
+                m_channels[i].strDeviceName = _T("消毒液传感器");
+            }
+        }
+        else  // 输出通道
+        {
+            m_channels[i].type = IO_TYPE_OUTPUT;
+            m_channels[i].nGPIOBit = i + 2;  // bit 4, 5
+            m_channels[i].nGPIOPin = i + 3;  // pin 5, 6
+            
+            if (i == 2)  // 输液开关
+            {
+                m_channels[i].strName = _T("输出1");
+                m_channels[i].strDeviceName = _T("输液开关");
+            }
+            else  // 消毒液开关
+            {
+                m_channels[i].strName = _T("输出2");
+                m_channels[i].strDeviceName = _T("消毒液开关");
+            }
+        }
+    }
+    
+    // 设置默认硬件配置为GPIO
+    m_hwConfig.type = IO_HW_TYPE_GPIO;
+}
+
+CIOController::~CIOController()
+{
+    Shutdown();
+}
+
+BOOL CIOController::Initialize()
+{
+    if (m_bInitialized)
+    {
+        return TRUE;
+    }
+
+    // 检测硬件连接
+    if (!DetectHardware())
+    {
+        m_hwState = IO_HW_DISCONNECTED;
+        CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, 
+            _T("硬件检测失败：未检测到I/O设备"));
+        return FALSE;
+    }
+    
+    // 根据硬件类型进行初始化
+    if (m_hwConfig.type == IO_HW_TYPE_GPIO)
+    {
+        if (!InitializeGPIO())
+        {
+            m_hwState = IO_HW_ERROR;
+            CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, 
+                _T("GPIO初始化失败"));
+            return FALSE;
+        }
+    }
+    else
+    {
+        // 其他类型硬件的初始化
+        if (!OpenHardwareDevice())
+        {
+            m_hwState = IO_HW_ERROR;
+            CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, 
+                _T("硬件设备打开失败"));
+            return FALSE;
+        }
+    }
+    
+    m_hwState = IO_HW_CONNECTED;
+    
+    // 初始化输入通道状态
+    for (int i = 0; i < 2; i++)
+    {
+        m_channels[i].state = IO_STATE_LOW;
+        IOChannelState hwState = ReadHardware(i);
+        if (hwState != IO_STATE_UNKNOWN)
+        {
+            m_channels[i].state = hwState;
+        }
+    }
+    
+    // 初始化输出通道 - 设置为安全的低电平（关闭状态）
+    for (int i = 2; i < 4; i++)
+    {
+        m_channels[i].state = IO_STATE_LOW;
+        WriteHardware(i, IO_STATE_LOW);
+    }
+
+    m_bInitialized = TRUE;
+    CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, 
+        _T("I/O控制器初始化成功（GPIO模式）"));
+    return TRUE;
+}
+
+void CIOController::Shutdown()
+{
+    if (!m_bInitialized)
+    {
+        return;
+    }
+
+    // 关闭所有输出（安全措施）
+    for (int i = 2; i < 4; i++)
+    {
+        WriteOutput(i, IO_STATE_LOW);
+    }
+
+    // 关闭硬件
+    if (m_hwConfig.type == IO_HW_TYPE_GPIO)
+    {
+        ShutdownGPIO();
+    }
+    else
+    {
+        CloseHardwareDevice();
+    }
+
+    m_bInitialized = FALSE;
+    m_hwState = IO_HW_DISCONNECTED;
+    
+    CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, 
+        _T("I/O控制器已关闭"));
+}
+
+BOOL CIOController::DetectHardware()
+{
+    switch (m_hwConfig.type)
+    {
+    case IO_HW_TYPE_GPIO:
+        return DetectGPIODevice();
+        
+    case IO_HW_TYPE_COM:
+        return DetectCOMDevice(m_hwConfig.strDevicePath);
+        
+    case IO_HW_TYPE_USB:
+        return DetectUSBDevice(m_hwConfig.wVendorID, m_hwConfig.wProductID);
+        
+    case IO_HW_TYPE_DEVICE:
+    default:
+        return DetectDevicePath(m_hwConfig.strDevicePath);
+    }
+}
+
+BOOL CIOController::DetectGPIODevice()
+{
+    // 尝试初始化BPI设备
+    int result = BPI_Init();
+    if (result != BPI_STATUS_SUCCESSFUL)
+    {
+        CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, 
+            _T("BPI设备初始化失败"));
+        return FALSE;
+    }
+    
+    // 检测GPIO设备数量
+    unsigned char num = 0;
+    result = BPI_GPIO_Init(&num);
+    if (result != BPI_STATUS_SUCCESSFUL)
+    {
+        BPI_Close();
+        CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_ERROR, 
+            _T("GPIO设备初始化失败"));
+        return FALSE;
+    }
+    
+    CString strMsg;
+    strMsg.Format(_T("检测到 %d 个GPIO设备"), (int)num);
+    CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, strMsg);
+    
+    // 关闭以便后续正式初始化时重新打开
+    BPI_GPIO_Close();
+    BPI_Close();
+    
+    return TRUE;
+}
+
+BOOL CIOController::InitializeGPIO()
+{
+    // 初始化BPI设备
+    int result = BPI_Init();
+    if (result != BPI_STATUS_SUCCESSFUL)
+    {
+        return FALSE;
+    }
+    
+    // 初始化GPIO
+    unsigned char num = 0;
+    result = BPI_GPIO_Init(&num);
+    if (result != BPI_STATUS_SUCCESSFUL)
+    {
+        BPI_Close();
+        return FALSE;
+    }
+    
+    // 设置GPIO模式：低4位(pin 1-4)为输入，高4位(pin 5-8)为输出
+    // 0xF0 = 0b11110000
+    BYTE setIO = 0xF0;
+    result = BPI_GPIO_SetIoMode(&setIO, 1);
+    if (result != BPI_STATUS_SUCCESSFUL)
+    {
+        BPI_GPIO_Close();
+        BPI_Close();
+        return FALSE;
+    }
+    
+    // 初始化所有输出为低电平（关闭状态）
+    m_currentOutputLevels = 0x00;
+    BPI_GPIO_SetLevels(&m_currentOutputLevels, 1);
+    
+    // 读取初始输入状态
+    m_lastInputLevels = 0;
+    BPI_GPIO_GetLevels(&m_lastInputLevels, 1);
+    
+    m_bGPIOInitialized = TRUE;
+    
+    CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, 
+        _T("GPIO硬件初始化成功：输入(PIN 1-4) 输出(PIN 5-8)"));
+    
+    return TRUE;
+}
+
+void CIOController::ShutdownGPIO()
+{
+    if (!m_bGPIOInitialized)
+    {
+        return;
+    }
+    
+    // 关闭所有输出
+    BYTE levels = 0x00;
+    BPI_GPIO_SetLevels(&levels, 1);
+    
+    // 关闭GPIO和BPI
+    BPI_GPIO_Close();
+    BPI_Close();
+    
+    m_bGPIOInitialized = FALSE;
+    m_currentOutputLevels = 0;
+}
+
+BOOL CIOController::ReadGPIOInputs(BYTE& levels)
+{
+    if (!m_bGPIOInitialized)
+    {
+        return FALSE;
+    }
+    
+    int result = BPI_GPIO_GetLevels(&levels, 1);
+    if (result != BPI_STATUS_SUCCESSFUL)
+    {
+        return FALSE;
+    }
+    
+    m_lastInputLevels = levels;
+    return TRUE;
+}
+
+BOOL CIOController::WriteGPIOOutputs(BYTE levels)
+{
+    if (!m_bGPIOInitialized)
+    {
+        return FALSE;
+    }
+    
+    int result = BPI_GPIO_SetLevels(&levels, 1);
+    if (result != BPI_STATUS_SUCCESSFUL)
+    {
+        return FALSE;
+    }
+    
+    m_currentOutputLevels = levels;
+    return TRUE;
+}
+
+BOOL CIOController::SetGPIOPin(int pin, BOOL bHigh)
+{
+    if (!m_bGPIOInitialized)
+    {
+        return FALSE;
+    }
+    
+    if (pin < 5 || pin > 8)
+    {
+        // 只能设置输出引脚5-8
+        return FALSE;
+    }
+    
+    int result = BPI_GPIO_SetPinLevel(pin, bHigh ? 1 : 0);
+    if (result != BPI_STATUS_SUCCESSFUL)
+    {
+        return FALSE;
+    }
+    
+    // 更新输出状态缓存
+    int bitPos = pin - 1;  // pin 5-8 对应 bit 4-7
+    if (bHigh)
+    {
+        m_currentOutputLevels |= (1 << bitPos);
+    }
+    else
+    {
+        m_currentOutputLevels &= ~(1 << bitPos);
+    }
+    
+    return TRUE;
+}
+
+BOOL CIOController::GetGPIOPin(int pin, BOOL& bHigh)
+{
+    if (!m_bGPIOInitialized)
+    {
+        return FALSE;
+    }
+    
+    if (pin < 1 || pin > 4)
+    {
+        // 只能读取输入引脚1-4
+        return FALSE;
+    }
+    
+    BYTE levels;
+    if (!ReadGPIOInputs(levels))
+    {
+        return FALSE;
+    }
+    
+    int bitPos = pin - 1;  // pin 1-4 对应 bit 0-3
+    bHigh = (levels & (1 << bitPos)) != 0;
+    
+    return TRUE;
+}
+
+IOChannelState CIOController::ReadHardware(int nChannelId)
+{
+    if (m_hwConfig.type == IO_HW_TYPE_GPIO)
+    {
+        // GPIO读取
+        if (!m_bGPIOInitialized || nChannelId < 0 || nChannelId >= 2)
+        {
+            return IO_STATE_UNKNOWN;
+        }
+        
+        BYTE levels;
+        if (!ReadGPIOInputs(levels))
+        {
+            return IO_STATE_UNKNOWN;
+        }
+        
+        // 检查对应位
+        int bitPos = m_channels[nChannelId].nGPIOBit;
+        BOOL bHigh = (levels & (1 << bitPos)) != 0;
+        
+        return bHigh ? IO_STATE_HIGH : IO_STATE_LOW;
+    }
+    else
+    {
+        // 其他硬件类型的读取
+        if (m_hDevice == INVALID_HANDLE_VALUE)
+        {
+            return IO_STATE_UNKNOWN;
+        }
+        
+        // TODO: 实现其他硬件类型的读取
+        if (nChannelId >= 0 && nChannelId < 4)
+        {
+            return m_channels[nChannelId].state;
+        }
+        
+        return IO_STATE_UNKNOWN;
+    }
+}
+
+BOOL CIOController::WriteHardware(int nChannelId, IOChannelState state)
+{
+    if (m_hwConfig.type == IO_HW_TYPE_GPIO)
+    {
+        // GPIO写入
+        if (!m_bGPIOInitialized || nChannelId < 2 || nChannelId >= 4)
+        {
+            return FALSE;
+        }
+        
+        int pin = m_channels[nChannelId].nGPIOPin;
+        BOOL bHigh = (state == IO_STATE_HIGH);
+        
+        if (!SetGPIOPin(pin, bHigh))
+        {
+            return FALSE;
+        }
+        
+        CString strMsg;
+        strMsg.Format(_T("GPIO PIN %d 设置为 %s"), 
+            pin, bHigh ? _T("高电平") : _T("低电平"));
+        CLogManager::GetInstance().AddLog(_T("I/O控制"), LOG_INFO, strMsg);
+        
+        return TRUE;
+    }
+    else
+    {
+        // 其他硬件类型的写入
+        if (m_hDevice == INVALID_HANDLE_VALUE)
+        {
+            return FALSE;
+        }
+        
+        // TODO: 实现其他硬件类型的写入
+        return TRUE;
+    }
+}
+
+IOChannelState CIOController::ReadInput(int nChannelId)
+{
+    if (!m_bInitialized || nChannelId < 0 || nChannelId >= 2)
+    {
+        return IO_STATE_UNKNOWN;
+    }
+    
+    if (!IsHardwareConnected())
+    {
+        return IO_STATE_UNKNOWN;
+    }
+
+    IOChannelState hwState = ReadHardware(nChannelId);
+    if (hwState != IO_STATE_UNKNOWN)
+    {
+        m_channels[nChannelId].state = hwState;
+    }
+    return m_channels[nChannelId].state;
+}
+
+BOOL CIOController::WriteOutput(int nChannelId, IOChannelState state)
+{
+    if (!m_bInitialized || nChannelId < 2 || nChannelId >= 4)
+    {
+        return FALSE;
+    }
+    
+    if (!IsHardwareConnected())
+    {
+        return FALSE;
+    }
+
+    if (WriteHardware(nChannelId, state))
+    {
+        m_channels[nChannelId].state = state;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+BOOL CIOController::GetChannelInfo(int nChannelId, IOChannelInfo& info)
+{
+    if (nChannelId < 0 || nChannelId >= 4)
+    {
+        return FALSE;
+    }
+
+    info = m_channels[nChannelId];
+    return TRUE;
+}
+
+void CIOController::SetChannelInfo(int nChannelId, const IOChannelInfo& info)
+{
+    if (nChannelId >= 0 && nChannelId < 4)
+    {
+        m_channels[nChannelId] = info;
+    }
+}
+
+void CIOController::RefreshInputs()
+{
+    if (!m_bInitialized)
+    {
+        return;
+    }
+
+    for (int i = 0; i < 2; i++)
+    {
+        ReadInput(i);
+    }
+}
+
+CString CIOController::GetHardwareStateText() const
+{
+    switch (m_hwState)
+    {
+    case IO_HW_CONNECTED:
+        if (m_hwConfig.type == IO_HW_TYPE_GPIO)
+        {
+            return _T("已连接（GPIO）");
+        }
+        return _T("已连接");
+    case IO_HW_DISCONNECTED:
+        return _T("未连接");
+    case IO_HW_ERROR:
+        return _T("连接错误");
+    default:
+        return _T("未知");
+    }
+}
+
+void CIOController::SetHardwareConfig(const IOHardwareConfig& config)
+{
+    if (!m_bInitialized)
+    {
+        m_hwConfig = config;
+    }
+}
+
+void CIOController::SimulateInputChange(int nChannelId, IOChannelState newState)
+{
+    if (nChannelId >= 0 && nChannelId < 2)
+    {
+        m_channels[nChannelId].state = newState;
+    }
+}
+
+// 业务层封装方法
+BOOL CIOController::OpenInfusionSwitch()
+{
+    return WriteOutput(2, IO_STATE_HIGH);  // 通道2 = GPIO PIN 5
+}
+
+BOOL CIOController::CloseInfusionSwitch()
+{
+    return WriteOutput(2, IO_STATE_LOW);
+}
+
+BOOL CIOController::OpenDisinfectSwitch()
+{
+    return WriteOutput(3, IO_STATE_HIGH);  // 通道3 = GPIO PIN 6
+}
+
+BOOL CIOController::CloseDisinfectSwitch()
+{
+    return WriteOutput(3, IO_STATE_LOW);
+}
+
+BOOL CIOController::GetInfusionSensorState()
+{
+    IOChannelState state = ReadInput(0);  // 通道0 = GPIO PIN 1
+    return (state == IO_STATE_HIGH);
+}
+
+BOOL CIOController::GetDisinfectSensorState()
+{
+    IOChannelState state = ReadInput(1);  // 通道1 = GPIO PIN 2
+    return (state == IO_STATE_HIGH);
+}
+
+// 其他硬件类型的检测实现（保留原有代码）
+BOOL CIOController::DetectCOMDevice(const CString& strCOMPort)
+{
+    HANDLE hCOM = CreateFile(
+        strCOMPort,
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        0,
+        NULL
+    );
+    
+    if (hCOM == INVALID_HANDLE_VALUE)
+    {
+        return FALSE;
+    }
+    
+    CloseHandle(hCOM);
+    return TRUE;
+}
+
+BOOL CIOController::DetectUSBDevice(WORD wVID, WORD wPID)
+{
+    HDEVINFO hDevInfo = SetupDiGetClassDevs(
+        &GUID_DEVCLASS_USB,
+        NULL,
+        NULL,
+        DIGCF_PRESENT | DIGCF_ALLCLASSES
+    );
+    
+    if (hDevInfo == INVALID_HANDLE_VALUE)
+    {
+        return FALSE;
+    }
+    
+    SP_DEVINFO_DATA devInfoData;
+    devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+    
+    BOOL bFound = FALSE;
+    for (DWORD i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &devInfoData); i++)
+    {
+        TCHAR szHardwareID[256];
+        if (SetupDiGetDeviceRegistryProperty(
+            hDevInfo,
+            &devInfoData,
+            SPDRP_HARDWAREID,
+            NULL,
+            (PBYTE)szHardwareID,
+            sizeof(szHardwareID),
+            NULL))
+        {
+            CString strHardwareID(szHardwareID);
+            CString strVID, strPID;
+            strVID.Format(_T("VID_%04X"), wVID);
+            strPID.Format(_T("PID_%04X"), wPID);
+            
+            if (strHardwareID.Find(strVID) >= 0 && strHardwareID.Find(strPID) >= 0)
+            {
+                bFound = TRUE;
+                break;
+            }
+        }
+    }
+    
+    SetupDiDestroyDeviceInfoList(hDevInfo);
+    return bFound;
+}
+
+BOOL CIOController::DetectDevicePath(const CString& strPath)
+{
+    HANDLE hDevice = CreateFile(
+        strPath,
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        0,
+        NULL
+    );
+    
+    if (hDevice == INVALID_HANDLE_VALUE)
+    {
+        return FALSE;
+    }
+    
+    CloseHandle(hDevice);
+    return TRUE;
+}
+
+BOOL CIOController::OpenHardwareDevice()
+{
+    m_hDevice = CreateFile(
+        m_hwConfig.strDevicePath,
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_FLAG_OVERLAPPED,
+        NULL
+    );
+    
+    if (m_hDevice == INVALID_HANDLE_VALUE)
+    {
+        return FALSE;
+    }
+    
+    if (m_hwConfig.type == IO_HW_TYPE_COM)
+    {
+        DCB dcb = { 0 };
+        dcb.DCBlength = sizeof(DCB);
+        
+        if (!GetCommState(m_hDevice, &dcb))
+        {
+            CloseHandle(m_hDevice);
+            m_hDevice = INVALID_HANDLE_VALUE;
+            return FALSE;
+        }
+        
+        dcb.BaudRate = CBR_9600;
+        dcb.ByteSize = 8;
+        dcb.StopBits = ONESTOPBIT;
+        dcb.Parity = NOPARITY;
+        
+        if (!SetCommState(m_hDevice, &dcb))
+        {
+            CloseHandle(m_hDevice);
+            m_hDevice = INVALID_HANDLE_VALUE;
+            return FALSE;
+        }
+        
+        COMMTIMEOUTS timeouts = { 0 };
+        timeouts.ReadIntervalTimeout = 50;
+        timeouts.ReadTotalTimeoutConstant = 50;
+        timeouts.ReadTotalTimeoutMultiplier = 10;
+        timeouts.WriteTotalTimeoutConstant = 50;
+        timeouts.WriteTotalTimeoutMultiplier = 10;
+        
+        SetCommTimeouts(m_hDevice, &timeouts);
+    }
+    
+    return TRUE;
+}
+
+void CIOController::CloseHardwareDevice()
+{
+    if (m_hDevice != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(m_hDevice);
+        m_hDevice = INVALID_HANDLE_VALUE;
+    }
+}

@@ -1,0 +1,80 @@
+﻿# 流程控制阶段｜项目运行流程图（Mermaid）
+
+> 说明：这是“流程控制阶段”的整体运行流程（从打开流程面板 → 参数 → 启动线程 → Step1~Step7 → 结束/异常）。
+> 
+> - 代码层对应：`CProcedureDlg`（UI） + `CProcedureController`（流程线程）
+> - 图里只保留关键判断与关键动作，方便导入 XMind 或渲染成流程图。
+
+```mermaid
+flowchart TD
+    %% =============================
+    %% ① 主流程（建议只看这一条）
+    %% =============================
+    subgraph MAIN[主流程｜打开面板 → 启动线程 → Step1~Step7]
+        direction TD
+        A([打开流程控制面板\nOnInitDialog()]) --> B[初始化控件\nInitializeControls()]
+        B --> C[加载参数\nLoadProcedureParams()\nconfig.ini → m_params]
+        C --> D[初始化控制器\nInitializeController()\n注入：机械臂/232/485/I-O/视觉]
+        D --> E[定时刷新\nSetTimer(200ms)\n刷新状态+实时监控]
+
+        E --> G1[点“开始完整流程”\nReadParamsFromUI()]
+        G1 --> G2{Validate() 参数有效?}
+        G2 -->|否| G3[提示参数无效\n阻止启动]
+        G2 -->|是| G4[SetParams(m_params)\n推送到控制器]
+        G4 --> G5{硬件就绪?}
+        G5 -->|否| G6[提示：检查设备连接/串口/I-O]
+        G5 -->|是| H([StartProcedure()\n启动流程线程])
+
+        H --> S1[Step1 视觉定位\nExecuteStep1_VisionLocate()\n(识别模型→坐标转换→移动到安全高度)]
+        S1 --> S2[Step2 激光粗调\nExecuteStep2_LaserCoarseAdjust()\n(开激光→读485→Z轴调整到目标±粗调)]
+        S2 --> S3[Step3 识别穿刺点\nExecuteStep3_DetectPuncturePoint()\n(关激光→识别穿刺点→记录点位/姿态)]
+        S3 --> S4[Step4 精准对位\nExecuteStep4_PreciseAlignment()\n(到穿刺点上方→可选XY闭环→Z精调到±精调)]
+        S4 --> S5[Step5 消毒\nExecuteStep5_Disinfection()\n(I/O开阀→等待→关阀)]
+        S5 --> S6[Step6 穿刺\nExecuteStep6_Puncture()\n(232发送MR-深度→超时等待完成)]
+        S6 --> S7[Step7 输液\nExecuteStep7_Infusion()\n(I/O打开输液阀)]
+        S7 --> OK([COMPLETED\n流程完成])
+    end
+
+    %% ==================================
+    %% ② 异常处理（从任意 Step 失败跳转）
+    %% ==================================
+    subgraph FAIL[异常路径｜任意步骤失败]
+        direction TB
+        ER([ERROR\n记录错误信息\n停止流程/回滚(如有)])
+    end
+    S1 -.失败.-> ER
+    S2 -.失败.-> ER
+    S3 -.失败.-> ER
+    S4 -.失败.-> ER
+    S5 -.失败.-> ER
+    S6 -.失败.-> ER
+    S7 -.失败.-> ER
+
+    %% =============================
+    %% ③ 运行控制（暂停/停止/急停）
+    %% =============================
+    subgraph CTRL[运行控制｜暂停/停止/急停]
+        direction TD
+        P{暂停按钮?\nPause/Resume} --> P1[PauseProcedure()\n线程等待]
+        P1 --> P2[ResumeProcedure()\n线程继续]
+        T{停止按钮?\nStop} --> T1[StopProcedure()\n设置停止标志→线程安全退出]
+        T1 --> STOP([STOPPED\n流程停止])
+        ES{急停按钮?\nEmergencyStop} --> ES1[EmergencyStop()\n立即停机械臂/关闭IO/停止线程]
+        ES1 --> STOP
+    end
+
+    %% =============================
+    %% ④ 实时监控（单独说明，避免主图走线乱）
+    %% =============================
+    subgraph MON[实时监控刷新｜UpdateRealTimeData()]
+        direction TD
+        RT[每200ms刷新一次\n显示：激光/误差/目标高度/XY/机械臂位置]
+        RT --> R1[RUNNING/PAUSED：读控制器缓存\n(避免UI抢串口/抢机械臂→读帧错乱)]
+        RT --> R2[IDLE/STOP/COMPLETED/ERROR：可直接读485/读机械臂\n(便于空闲调试和校准)]
+    end
+```
+
+## 节点说明（简短）
+- “保存参数”和“开始流程”都会走 `Validate()`：参数不合法直接拦截，避免流程跑到一半出危险动作。
+- `RUNNING/PAUSED` 状态下 UI 不直接读 485/机械臂：改读控制器缓存，避免和流程线程抢串口导致“读帧错乱”。
+- Step4 的 XY 闭环是可选的：由 `bEnableXYAlign` 控制；没启用时只做 Z 精调。

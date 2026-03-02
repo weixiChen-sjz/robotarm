@@ -1,0 +1,90 @@
+﻿//{{NO_DEPENDENCIES}}
+// Microsoft Visual C++ 生成的包含文件。
+// 由 MFCApplication1.rc 使用
+//
+#define IDR_MAINFRAME					128
+#define IDM_ABOUTBOX					0x0010
+#define IDD_ABOUTBOX					100
+#define IDS_ABOUTBOX					101
+#define IDD_MFCAPPLICATION1_DIALOG				102
+
+// 标准控件ID
+#define IDC_STATIC                      -1
+
+// 232串口控件ID
+#define IDC_COMBO_COM232                1000
+#define IDC_COMBO_BAUDRATE232           1001
+#define IDC_COMBO_DATABITS232           1002
+#define IDC_COMBO_STOPBITS232           1003
+#define IDC_COMBO_PARITY232             1004
+#define IDC_BUTTON_OPEN232              1005
+#define IDC_EDIT_SEND232                1006
+#define IDC_BUTTON_SEND232              1007
+#define IDC_EDIT_RECEIVE232             1008
+#define IDC_CHECK_HEX232                1009
+#define IDC_BUTTON_CLEAR232             1010
+
+// 485串口控件ID
+#define IDC_COMBO_COM485                1011
+#define IDC_COMBO_BAUDRATE485           1012
+#define IDC_COMBO_DATABITS485           1013
+#define IDC_COMBO_STOPBITS485           1014
+#define IDC_COMBO_PARITY485             1015
+#define IDC_BUTTON_OPEN485              1016
+#define IDC_EDIT_SEND485                1017
+#define IDC_BUTTON_SEND485              1018
+#define IDC_EDIT_RECEIVE485             1019
+#define IDC_CHECK_HEX485                1020
+#define IDC_BUTTON_CLEAR485             1021
+
+// 机械臂控件ID
+#define IDC_COMBO_COM_ROBOT             1022
+#define IDC_COMBO_BAUDRATE_ROBOT        1023
+#define IDC_BUTTON_CONNECT_ROBOT        1024
+#define IDC_BUTTON_INIT_ROBOT           1025
+#define IDC_BUTTON_HOME_ROBOT           1026
+#define IDC_BUTTON_START_ROBOT          1027
+#define IDC_BUTTON_STOP_ROBOT           1028
+#define IDC_BUTTON_ESTOP_ROBOT          1029
+#define IDC_EDIT_X_POS                  1030
+#define IDC_EDIT_Y_POS                  1031
+#define IDC_EDIT_Z_POS                  1032
+#define IDC_SLIDER_SPEED                1033
+#define IDC_STATIC_SPEED                1034
+#define IDC_BUTTON_POS1                 1035
+#define IDC_BUTTON_POS2                 1036
+#define IDC_BUTTON_POS3                 1037
+#define IDC_STATIC_ROBOT_STATUS         1038
+
+// I/O控件ID
+#define IDC_STATIC_IO1_STATUS           1039
+#define IDC_STATIC_IO2_STATUS           1040
+#define IDC_STATIC_IO3_STATUS           1041
+#define IDC_STATIC_IO4_STATUS           1042
+#define IDC_BUTTON_IO3_TOGGLE           1043
+#define IDC_BUTTON_IO4_TOGGLE           1044
+#define IDC_BUTTON_IO_INIT              1045
+
+// 日志控件ID
+#define IDC_LIST_LOG                    1046
+#define IDC_BUTTON_EXPORT_LOG           1047
+#define IDC_BUTTON_CLEAR_LOG            1048
+
+// 分组框ID
+#define IDC_GROUP_232                   1049
+#define IDC_GROUP_485                   1050
+#define IDC_GROUP_ROBOT                 1051
+#define IDC_GROUP_IO                    1052
+#define IDC_GROUP_LOG                   1053
+
+// 新对象的下一组默认值
+//
+#ifdef APSTUDIO_INVOKED
+#ifndef APSTUDIO_READONLY_SYMBOLS
+
+#define _APS_NEXT_RESOURCE_VALUE	129
+#define _APS_NEXT_CONTROL_VALUE		1054
+#define _APS_NEXT_SYMED_VALUE		101
+#define _APS_NEXT_COMMAND_VALUE		32771
+#endif
+#endif

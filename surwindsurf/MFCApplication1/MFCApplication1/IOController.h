@@ -1,0 +1,92 @@
+#pragma once
+#include <Windows.h>
+
+// 前向声明，避免包含EVOC_BPI_DLL.h
+typedef unsigned char BYTE;
+
+// GPIO控制器类 - 使用动态加载DLL
+class CIOController
+{
+public:
+    CIOController();
+    ~CIOController();
+
+    // GPIO初始化（对应原程序的GPIO_Init）
+    BOOL Initialize();
+    
+    // GPIO读写（对应原程序的GPIO_ReadWrite）
+    void ProcessGPIO();
+    
+    // 关闭GPIO
+    void Shutdown();
+    
+    // 检查是否已初始化
+    BOOL IsOpen() const { return m_GPIOOpen; }
+    
+    // 获取当前GPIO输入电平
+    BYTE GetGPIOLevels() const { return m_GPIOLevels; }
+    
+    // 业务层封装（为了兼容旧代码）
+    BOOL OpenInfusionSwitch();      // 打开输液开关（设置PIN 5 = 1）
+    BOOL CloseInfusionSwitch();     // 关闭输液开关（设置PIN 5 = 0）
+    BOOL OpenDisinfectSwitch();     // 打开消毒液开关（设置PIN 6 = 1）
+    BOOL CloseDisinfectSwitch();    // 关闭消毒液开关（设置PIN 6 = 0）
+    BOOL OpenLaserSwitch();         // 打开激光测距仪（设置PIN 7 = 1）
+    BOOL CloseLaserSwitch();        // 关闭激光测距仪（设置PIN 7 = 0）
+    
+    BOOL GetInfusionSensorState();  // 收到输液传感器状态（读取PIN 1）
+    BOOL GetDisinfectSensorState(); // 收到消毒液传感器状态（读取PIN 2）
+    BOOL GetLaserSensorState();     // 收到激光测距仪传感器状态（读取PIN 3）
+    
+    // 获取输出开关状态
+    BOOL GetInfusionSwitchState() const { return m_bInfusionSwitchOpen; }    // 获取输液开关状态
+    BOOL GetDisinfectSwitchState() const { return m_bDisinfectSwitchOpen; }  // 获取消毒液开关状态
+    BOOL GetLaserSwitchState() const { return m_bLaserSwitchOpen; }          // 获取激光测距仪电源开关状态
+    
+    // 获取硬件状态文本
+    CString GetHardwareStateText() const;
+    BOOL IsInitialized() const { return m_GPIOOpen; }
+    BOOL IsHardwareConnected() const { return m_GPIOOpen; }
+
+private:
+    // 完全按照原程序的变量定义
+    BOOL m_GPIOOpen;              // GPIO是否打开成功
+    BYTE m_GPIOLevels;            // 通过IO输入形成的标志变量
+    BYTE m_GPIOAPreLevels;        // 保存上一次输入的变量
+    
+    // 输出控制状态
+    BOOL m_bInfusionSwitchOpen;   // 输液开关状态
+    BOOL m_bDisinfectSwitchOpen;  // 消毒液开关状态
+    BOOL m_bLaserSwitchOpen;      // 激光测距仪开关状态
+    
+    // DLL动态加载
+    HMODULE m_hBpiDll;
+    
+    // 函数指针类型定义
+    typedef int (__stdcall *PFN_BPI_Init)(void);
+    typedef int (__stdcall *PFN_BPI_Deinit)(void);
+    typedef int (__stdcall *PFN_BPI_GPIO_Init)(unsigned char*);
+    typedef int (__stdcall *PFN_BPI_GPIO_Deinit)(void);
+    typedef int (__stdcall *PFN_BPI_GPIO_SetIoMode)(BYTE*, int);
+    typedef int (__stdcall *PFN_BPI_GPIO_SetLevels)(BYTE*, int);
+    typedef int (__stdcall *PFN_BPI_GPIO_GetLevels)(BYTE*, int);
+    typedef int (__stdcall *PFN_BPI_GPIO_SetPinLevel)(int, int);
+    
+    // 函数指针
+    PFN_BPI_Init m_pfnBPI_Init;
+    PFN_BPI_Deinit m_pfnBPI_Deinit;
+    PFN_BPI_GPIO_Init m_pfnBPI_GPIO_Init;
+    PFN_BPI_GPIO_Deinit m_pfnBPI_GPIO_Deinit;
+    PFN_BPI_GPIO_SetIoMode m_pfnBPI_GPIO_SetIoMode;
+    PFN_BPI_GPIO_SetLevels m_pfnBPI_GPIO_SetLevels;
+    PFN_BPI_GPIO_GetLevels m_pfnBPI_GPIO_GetLevels;
+    PFN_BPI_GPIO_SetPinLevel m_pfnBPI_GPIO_SetPinLevel;
+    
+    // DLL加载/卸载
+    BOOL LoadBpiDll();
+    void UnloadBpiDll();
+    
+    // 返回状态定义
+    static const int BPI_STATUS_SUCCESSFUL = 0;
+    static const int BPI_STATUS_FAILED = -1;
+};

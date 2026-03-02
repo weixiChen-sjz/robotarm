@@ -1,0 +1,317 @@
+﻿#include "pch.h"
+#include "RobotArmController.h"
+
+CRobotArmController::CRobotArmController()
+    : m_state(STATE_DISCONNECTED)
+    , m_nSpeed(50)
+    , m_nServerPort(0)
+{
+}
+
+CRobotArmController::~CRobotArmController()
+{
+    Disconnect();
+}
+
+BOOL CRobotArmController::Connect(const CString& strIP, int nPort)
+{
+    // 如果已连接，先断开
+    if (m_socket.m_hSocket != INVALID_SOCKET)
+    {
+        Disconnect();
+    }
+    
+    // 创建Socket
+    if (!m_socket.Create())
+    {
+        return FALSE;
+    }
+    
+    // 设置为非阻塞模式
+    DWORD dwNonBlock = 1;
+    if (m_socket.IOCtl(FIONBIO, &dwNonBlock) != 0)
+    {
+        m_socket.Close();
+        return FALSE;
+    }
+    
+    // 连接到服务器（非阻塞模式）
+    BOOL bConnected = m_socket.Connect(strIP, nPort);
+    
+    if (!bConnected)
+    {
+        int nError = WSAGetLastError();
+        
+        // 如果是WSAEWOULDBLOCK，说明正在连接中
+        if (nError == WSAEWOULDBLOCK)
+        {
+            // 使用select等待连接完成
+            fd_set fdWrite, fdExcept;
+            FD_ZERO(&fdWrite);
+            FD_ZERO(&fdExcept);
+            FD_SET(m_socket.m_hSocket, &fdWrite);
+            FD_SET(m_socket.m_hSocket, &fdExcept);
+            
+            // 设置超时时间为2秒
+            timeval timeout;
+            timeout.tv_sec = 2;
+            timeout.tv_usec = 0;
+            
+            int nRet = select(0, NULL, &fdWrite, &fdExcept, &timeout);
+            
+            if (nRet > 0)
+            {
+                // 检查是否连接成功
+                if (FD_ISSET(m_socket.m_hSocket, &fdWrite))
+                {
+                    // 需要进一步验证连接是否真的成功
+                    int nErrorCode = 0;
+                    int nLen = sizeof(nErrorCode);
+                    m_socket.GetSockOpt(SO_ERROR, &nErrorCode, &nLen);
+                    
+                    if (nErrorCode == 0)
+                    {
+                        bConnected = TRUE;
+                    }
+                    else
+                    {
+                        bConnected = FALSE;
+                    }
+                }
+                else if (FD_ISSET(m_socket.m_hSocket, &fdExcept))
+                {
+                    // 连接失败
+                    bConnected = FALSE;
+                }
+            }
+            else
+            {
+                // 超时或错误
+                bConnected = FALSE;
+            }
+        }
+        else
+        {
+            // 其他错误，直接失败
+            bConnected = FALSE;
+        }
+    }
+    
+    // 恢复为阻塞模式
+    DWORD dwBlock = 0;
+    m_socket.IOCtl(FIONBIO, &dwBlock);
+    
+    if (!bConnected)
+    {
+        m_socket.Close();
+        m_state = STATE_DISCONNECTED;
+        return FALSE;
+    }
+    
+    m_strServerIP = strIP;
+    m_nServerPort = nPort;
+    m_state = STATE_CONNECTED;
+    return TRUE;
+}
+
+void CRobotArmController::Disconnect()
+{
+    if (m_socket.m_hSocket != INVALID_SOCKET)
+    {
+        m_socket.Close();
+    }
+    m_state = STATE_DISCONNECTED;
+}
+
+BOOL CRobotArmController::Initialize()
+{
+    if (m_state == STATE_DISCONNECTED)
+    {
+        return FALSE;
+    }
+
+    CString strResponse;
+    if (SendCommand(_T("INIT\r\n"), strResponse))
+    {
+        if (strResponse.Find(_T("OK")) >= 0)
+        {
+            m_state = STATE_INITIALIZED;
+            m_currentPos = RobotArmPosition(0, 0, 0);
+            return TRUE;
+        }
+    }
+
+    m_state = STATE_ERROR;
+    return FALSE;
+}
+
+BOOL CRobotArmController::GoHome()
+{
+    if (m_state != STATE_INITIALIZED && m_state != STATE_MOVING)
+    {
+        return FALSE;
+    }
+
+    CString strResponse;
+    if (SendCommand(_T("HOME\r\n"), strResponse))
+    {
+        if (strResponse.Find(_T("OK")) >= 0)
+        {
+            m_currentPos = RobotArmPosition(0, 0, 0);
+            m_state = STATE_INITIALIZED;
+            return TRUE;
+        }
+    }
+
+    m_state = STATE_ERROR;
+    return FALSE;
+}
+
+BOOL CRobotArmController::MoveTo(const RobotArmPosition& pos, int nSpeed)
+{
+    if (m_state != STATE_INITIALIZED && m_state != STATE_MOVING)
+    {
+        return FALSE;
+    }
+
+    CString strCmd;
+    strCmd.Format(_T("MOVE X%.2f Y%.2f Z%.2f T%.2f S%d\r\n"), pos.X, pos.Y, pos.Z, pos.Theta, nSpeed);
+
+    CString strResponse;
+    if (SendCommand(strCmd, strResponse))
+    {
+        if (strResponse.Find(_T("OK")) >= 0)
+        {
+            m_state = STATE_MOVING;
+            m_currentPos = pos;
+            
+            // 模拟等待移动完成
+            Sleep(100);
+            m_state = STATE_INITIALIZED;
+            return TRUE;
+        }
+    }
+
+    m_state = STATE_ERROR;
+    return FALSE;
+}
+
+BOOL CRobotArmController::Stop()
+{
+    CString strResponse;
+    if (SendCommand(_T("STOP\r\n"), strResponse))
+    {
+        if (strResponse.Find(_T("OK")) >= 0)
+        {
+            m_state = STATE_INITIALIZED;
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+BOOL CRobotArmController::EmergencyStop()
+{
+    CString strResponse;
+    if (SendCommand(_T("ESTOP\r\n"), strResponse))
+    {
+        m_state = STATE_INITIALIZED;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+void CRobotArmController::SetSpeed(int nSpeed)
+{
+    if (nSpeed < 0)
+        nSpeed = 0;
+    if (nSpeed > 100)
+        nSpeed = 100;
+    
+    m_nSpeed = nSpeed;
+}
+
+BOOL CRobotArmController::IsConnected() const
+{
+    return m_socket.m_hSocket != INVALID_SOCKET && m_state != STATE_DISCONNECTED;
+}
+
+BOOL CRobotArmController::SendCommand(const CString& strCmd, CString& strResponse, DWORD dwTimeout)
+{
+    if (m_socket.m_hSocket == INVALID_SOCKET)
+    {
+        return FALSE;
+    }
+
+    // 转换为 ANSI 字符串发送
+    CStringA strCmdA(strCmd);
+    
+    // 发送命令
+    int nSent = m_socket.Send(strCmdA.GetString(), strCmdA.GetLength());
+    if (nSent == SOCKET_ERROR)
+    {
+        return FALSE;
+    }
+
+    // 等待响应
+    DWORD dwStartTime = GetTickCount();
+    char szBuffer[256] = {0};
+    
+    strResponse.Empty();
+    
+    while (GetTickCount() - dwStartTime < dwTimeout)
+    {
+        // 设置接收超时
+        int nTimeout = dwTimeout;
+        m_socket.SetSockOpt(SO_RCVTIMEO, &nTimeout, sizeof(nTimeout));
+        
+        int nReceived = m_socket.Receive(szBuffer, sizeof(szBuffer) - 1);
+        if (nReceived > 0)
+        {
+            szBuffer[nReceived] = '\0';
+            strResponse += CString(szBuffer);
+            
+            // 检查是否收到完整响应（以\r\n结尾）
+            if (strResponse.Find(_T("\r\n")) >= 0)
+            {
+                return TRUE;
+            }
+        }
+        else if (nReceived == SOCKET_ERROR)
+        {
+            int nError = WSAGetLastError();
+            if (nError != WSAETIMEDOUT)
+            {
+                // 真正的错误
+                return FALSE;
+            }
+        }
+        
+        Sleep(10);
+    }
+
+    // 超时，但如果有部分响应也返回TRUE
+    return !strResponse.IsEmpty();
+}
+
+BOOL CRobotArmController::ParsePosition(const CString& strResponse, RobotArmPosition& pos)
+{
+    // 解析格式: "POS X,Y,Z\r\n"
+    int nStart = strResponse.Find(_T("POS"));
+    if (nStart < 0)
+    {
+        return FALSE;
+    }
+
+    CString strPos = strResponse.Mid(nStart + 3);
+    strPos.Trim();
+
+    if (_stscanf_s(strPos, _T("%lf,%lf,%lf"), &pos.X, &pos.Y, &pos.Z) == 3)
+    {
+        return TRUE;
+    }
+
+    return FALSE;
+}

@@ -1,0 +1,235 @@
+﻿# MFCApplication1 项目框架（XMind 导入用）
+
+## 0. 项目总览
+- 项目类型：MFC 桌面应用（医疗穿刺机器人自动化控制系统）
+- 分层结构
+  - UI 层：`CMFCApplication1Dlg`、`CProcedureDlg`
+  - 流程控制层：`CProcedureController`
+  - 设备抽象层：`IRobotArmController`、`CSerialPort`、`CIOController`、`IVisionSystem`
+  - 工具层：`CLogManager`
+- 核心流程：7 步流程（Step1~Step7）
+- 配置：`config.ini`（流程参数持久化）
+
+## 1. UI 层（窗口/对话框）
+### 1.1 主窗口：`CMFCApplication1Dlg`
+- 作用
+  - 设备连接与手动控制入口
+  - 打开流程控制面板入口
+- 关键职责（概念）
+  - 232 串口（电机）
+  - 485 串口（激光测距）
+  - I/O 控制（阀门/激光开关）
+  - 机械臂 TCP/IP 控制
+- 关键交互
+  - 打开流程面板：`IDC_BUTTON_OPEN_PROCEDURE` → 创建/显示 `CProcedureDlg`
+
+### 1.2 流程控制面板：`CProcedureDlg`
+- 作用
+  - 流程参数设置（目标高度、容差、深度、时间等）
+  - 启动/停止/暂停完整流程
+  - 单步调试 Step1~Step7
+  - 实时数据监控（激光距离/误差/目标高度/XY 等）
+  - 日志显示
+
+#### 1.2.1 生命周期与定时刷新
+- `BOOL OnInitDialog()`
+  - `InitializeControls()`
+  - `LoadProcedureParams()`
+  - `InitializeController()`
+  - `SetTimer(TIMER_UPDATE_PROCEDURE, 200ms)`
+- `void OnTimer(UINT_PTR nIDEvent)`
+  - `UpdateProcedureStatus()`
+  - `UpdateRealTimeData()`
+
+#### 1.2.2 参数管理（UI ↔ 内存 ↔ INI）
+- 参数结构：`ProcedureParams`
+- UI→内存：`void ReadParamsFromUI()`
+- 内存→UI：`void DisplayParamsToUI()`
+- INI→内存：`void LoadProcedureParams()`
+  - `GetPrivateProfileFloat(...)`
+  - `GetPrivateProfileInt(...)`
+- 内存→INI：`void SaveProcedureParams()`
+  - `WritePrivateProfileFloat(...)`
+  - `WritePrivateProfileInt(...)`
+  - 同步：`m_controller.SetParams(m_params)`
+
+#### 1.2.3 流程控制按钮
+- 开始：`OnBnClickedButtonStartProcedure()`
+  - `ReadParamsFromUI()`
+  - `m_controller.SetParams(m_params)`
+  - `m_controller.StartProcedure()`
+- 停止：`OnBnClickedButtonStopProcedure()` → `m_controller.StopProcedure()`
+- 暂停/恢复：`OnBnClickedButtonPauseProcedure()` → `m_controller.PauseProcedure()` / `m_controller.ResumeProcedure()`
+- 急停：`OnBnClickedButtonEmergencyStop()` → `m_controller.EmergencyStop()`
+
+#### 1.2.4 单步调试按钮
+- `OnBnClickedButtonStep1Test()` → `m_controller.ExecuteStep(1)`
+- `OnBnClickedButtonStep2Test()` → `m_controller.ExecuteStep(2)`
+- `OnBnClickedButtonStep3Test()` → `m_controller.ExecuteStep(3)`
+- `OnBnClickedButtonStep4Test()` → `m_controller.ExecuteStep(4)`
+- `OnBnClickedButtonStep5Test()` → `m_controller.ExecuteStep(5)`
+- `OnBnClickedButtonStep6Test()` → `m_controller.ExecuteStep(6)`
+- `OnBnClickedButtonStep7Test()` → `m_controller.ExecuteStep(7)`
+
+#### 1.2.5 实时监控区（控件 → 数据来源）
+- `IDC_STATIC_LASER_DISTANCE`
+  - 空闲态：`m_controller.GetLaserDistance()`
+  - 运行/暂停：`m_controller.GetLastLaserReading(distanceMm, errorMm)`
+- `IDC_STATIC_DISTANCE_ERROR`
+  - 误差计算：`distance - m_params.fTargetHeight` 或使用控制器缓存误差
+- `IDC_STATIC_TARGET_HEIGHT`
+  - 目标高度显示：`m_params.fTargetHeight`
+- `IDC_STATIC_XY_ERROR`
+  - `m_controller.GetLastXYError(dxPx, dyPx, dxMm, dyMm)`
+- `IDC_STATIC_ROBOT_POSITION`
+  - 空闲态：`m_robotArm.GetCurrentPosition()`
+  - 运行/暂停：`m_controller.GetLastRobotPosition(pos)`
+
+#### 1.2.6 日志订阅与UI显示
+- 订阅：`SubscribeLogs(TRUE/FALSE)`
+- 回调：`OnLogAppended(const LogEntry& entry, void* pUserData)`
+- UI线程追加：`OnAppendProcedureLog(...)` → `AppendLogLine(...)`
+
+## 2. 流程控制层（7步流程）
+### 2.1 核心类：`CProcedureController`
+- 作用
+  - 管理 7 步流程执行
+  - 线程执行完整流程
+  - 单步执行
+  - 设备与视觉系统注入
+  - 运行期缓存供 UI 读取
+
+#### 2.1.1 设备/系统注入
+- `SetRobotArm(IRobotArmController*)`
+- `SetSerial232(CSerialPort*)`
+- `SetSerial485(CSerialPort*)`
+- `SetIOController(CIOController*)`
+- `SetVisionSystem(IVisionSystem*, BOOL bOwn)`
+- `SetParams(const ProcedureParams&)`
+
+#### 2.1.2 流程线程模型
+- `BOOL StartProcedure()`
+  - `CheckHardwareReady()`
+  - `m_params.Validate()`
+  - `_beginthreadex(..., ThreadFunc, this, ...)`
+- `UINT __stdcall ThreadFunc(LPVOID)` → `ThreadProcedure()`
+- `void ThreadProcedure()`
+  - for step=1..7
+    - stop/pause 检查
+    - `ExecuteStep(step)`
+    - 失败：`Rollback()`
+
+#### 2.1.3 状态机/控制
+- `StopProcedure()`
+- `PauseProcedure()`
+- `ResumeProcedure()`
+- `EmergencyStop()`
+- 状态通知
+  - `NotifyStateChange(ProcedureState)`
+  - `NotifyStepChange(int stepNumber, BOOL bSuccess)`
+
+#### 2.1.4 运行期缓存（给UI）
+- `GetLastLaserReading(float& distanceMm, float& errorMm)`
+- `GetLastRobotPosition(RobotArmPosition& pos)`
+- `GetLastXYError(int& dxPx, int& dyPx, float& dxMm, float& dyMm)`
+
+### 2.2 7步流程实现（函数级）
+- Step1：视觉定位
+  - `ExecuteStep1_VisionLocate()`
+  - 依赖：`IVisionSystem::DetectModel`、`TransformCoordinate`、`IRobotArmController::MoveTo`
+- Step2：激光粗调
+  - `ExecuteStep2_LaserCoarseAdjust()`
+  - 依赖：`GetLaserDistance()`、`IRobotArmController::MoveTo`
+- Step3：识别穿刺点
+  - `ExecuteStep3_DetectPuncturePoint()`
+  - 依赖：`IVisionSystem::DetectPuncturePoint`、`TransformCoordinate`
+- Step4：精准对位（XY可选 + Z精调）
+  - `ExecuteStep4_PreciseAlignment()`
+  - 可选 XY：`ExecuteStep4_XYAlign()`
+- Step5：消毒
+  - `ExecuteStep5_Disinfection()`
+  - 依赖：`CIOController::OpenDisinfectSwitch/CloseDisinfectSwitch`
+- Step6：穿刺
+  - `ExecuteStep6_Puncture()`
+  - 依赖：232 `CSerialPort::SendData`（指令 `MR-xxxx\r\n`）
+  - 等待：`WaitForMotorComplete(timeoutMs)`
+- Step7：输液
+  - `ExecuteStep7_Infusion()`
+  - 依赖：`CIOController::OpenInfusionSwitch`
+
+## 3. 设备抽象层
+### 3.1 机械臂控制（TCP/IP）
+- 接口：`IRobotArmController`
+- 实现：`CRobotArmController`
+- 关键函数
+  - `IsConnected()`
+  - `GetCurrentPosition()`
+  - `MoveTo(RobotArmPosition pos, int speedPercent)`
+  - `Stop()` / `EmergencyStop()`
+
+### 3.2 串口通信
+- 类：`CSerialPort`
+- 485（激光测距）
+  - 发送指令（Modbus RTU 读寄存器）
+  - 解析：`CSerialPort::ParseLaserDistance(...)`
+- 232（穿刺电机）
+  - 指令：`MR-<depth>\r\n`
+
+### 3.3 I/O 控制
+- 类：`CIOController`
+- 功能
+  - 激光开关：`OpenLaserSwitch()` / `CloseLaserSwitch()`
+  - 消毒阀：`OpenDisinfectSwitch()` / `CloseDisinfectSwitch()`
+  - 输液阀：`OpenInfusionSwitch()` / `CloseInfusionSwitch()`
+
+### 3.4 视觉系统
+- 接口：`IVisionSystem`
+- 当前实现：`CMockVisionSystem`
+- 关键函数（示例）
+  - `IsConnected()` / `IsCalibrated()`
+  - `DetectModel(...)`
+  - `DetectPuncturePoint(...)`
+  - `TransformCoordinate(...)`
+  - IR闭环
+    - `DetectLaserSpotPixelIR(...)`
+    - `DetectPuncturePointPixelIR(...)`
+
+## 4. 配置与参数
+### 4.1 参数结构：`ProcedureParams`
+- 目标与精度
+  - `fTargetHeight`
+  - `fCoarseTolerance`
+  - `fFineTolerance`
+- 过程参数
+  - `fPunctureDepth`
+  - `fDisinfectTime`
+  - `fSafeHeight`
+- 开关
+  - `bEnableVision`
+  - `bEnableXYAlign`
+- 校验：`Validate()`
+
+### 4.2 配置文件：`config.ini`
+- `[Procedure]`
+  - `TargetHeight`
+  - `CoarseTolerance`
+  - `FineTolerance`
+  - `PunctureDepth`
+  - `DisinfectTime`
+  - `SafeHeight`
+  - `EnableVision`
+  - `EnableXYAlign`
+
+## 5. 日志系统
+- 类：`CLogManager`
+- 作用
+  - 模块日志统一入口
+  - UI订阅推送（流程面板实时显示）
+- UI消费：`CProcedureDlg` 通过 `WM_APPEND_PROCEDURE_LOG` 异步追加
+
+## 6. 文档（`docs/`）
+- `docs/架构说明.md`：架构描述、UI与流程线程协作
+- `docs/7步流程最终检查报告.md`：7步逻辑对照检查
+- `docs/RealSense目标高度动态获取方案.md`：RealSense集成思路
+- `docs/目标高度参数修改完成报告.md`：目标高度相关改动记录
+- 其它：修复清单、容错增强、范围修正等报告

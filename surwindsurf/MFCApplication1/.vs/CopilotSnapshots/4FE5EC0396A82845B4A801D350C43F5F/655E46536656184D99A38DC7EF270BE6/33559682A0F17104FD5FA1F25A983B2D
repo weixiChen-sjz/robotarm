@@ -1,0 +1,160 @@
+﻿#include "pch.h"
+#include "IOController.h"
+
+CIOController::CIOController()
+    : m_bInitialized(FALSE)
+{
+    // 初始化通道信息
+    for (int i = 0; i < 4; i++)
+    {
+        m_channels[i].nChannelId = i;
+        m_channels[i].state = IO_STATE_UNKNOWN;
+        
+        if (i < 2)
+        {
+            m_channels[i].type = IO_TYPE_INPUT;
+            m_channels[i].strName.Format(_T("输入%d"), i + 1);
+        }
+        else
+        {
+            m_channels[i].type = IO_TYPE_OUTPUT;
+            m_channels[i].strName.Format(_T("输出%d"), i - 1);
+        }
+    }
+}
+
+CIOController::~CIOController()
+{
+    Shutdown();
+}
+
+BOOL CIOController::Initialize()
+{
+    if (m_bInitialized)
+    {
+        return TRUE;
+    }
+
+    // 这里应该初始化实际的硬件I/O接口
+    // 现在只是模拟初始化
+    
+    // 初始化输入通道状态
+    for (int i = 0; i < 2; i++)
+    {
+        m_channels[i].state = IO_STATE_LOW;
+    }
+    
+    // 初始化输出通道状态
+    for (int i = 2; i < 4; i++)
+    {
+        m_channels[i].state = IO_STATE_LOW;
+        SimulateWriteHardware(i, IO_STATE_LOW);
+    }
+
+    m_bInitialized = TRUE;
+    return TRUE;
+}
+
+void CIOController::Shutdown()
+{
+    if (!m_bInitialized)
+    {
+        return;
+    }
+
+    // 关闭所有输出
+    for (int i = 2; i < 4; i++)
+    {
+        WriteOutput(i, IO_STATE_LOW);
+    }
+
+    m_bInitialized = FALSE;
+}
+
+IOChannelState CIOController::ReadInput(int nChannelId)
+{
+    if (!m_bInitialized || nChannelId < 0 || nChannelId >= 2)
+    {
+        return IO_STATE_UNKNOWN;
+    }
+
+    // 从硬件读取状态
+    m_channels[nChannelId].state = SimulateReadHardware(nChannelId);
+    return m_channels[nChannelId].state;
+}
+
+BOOL CIOController::WriteOutput(int nChannelId, IOChannelState state)
+{
+    if (!m_bInitialized || nChannelId < 2 || nChannelId >= 4)
+    {
+        return FALSE;
+    }
+
+    // 写入硬件
+    if (SimulateWriteHardware(nChannelId, state))
+    {
+        m_channels[nChannelId].state = state;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+BOOL CIOController::GetChannelInfo(int nChannelId, IOChannelInfo& info)
+{
+    if (nChannelId < 0 || nChannelId >= 4)
+    {
+        return FALSE;
+    }
+
+    info = m_channels[nChannelId];
+    return TRUE;
+}
+
+void CIOController::SetChannelInfo(int nChannelId, const IOChannelInfo& info)
+{
+    if (nChannelId >= 0 && nChannelId < 4)
+    {
+        m_channels[nChannelId] = info;
+    }
+}
+
+void CIOController::RefreshInputs()
+{
+    if (!m_bInitialized)
+    {
+        return;
+    }
+
+    for (int i = 0; i < 2; i++)
+    {
+        ReadInput(i);
+    }
+}
+
+IOChannelState CIOController::SimulateReadHardware(int nChannelId)
+{
+    // 模拟硬件读取
+    // 实际应用中，这里应该调用硬件驱动API
+    
+    // 这里只是简单地返回一个模拟值
+    // 可以根据某些条件返回不同的状态
+    static DWORD dwTickCount = 0;
+    if (GetTickCount() - dwTickCount > 5000)
+    {
+        dwTickCount = GetTickCount();
+        // 每5秒随机切换一次状态（仅用于演示）
+        return (rand() % 2 == 0) ? IO_STATE_LOW : IO_STATE_HIGH;
+    }
+    
+    return m_channels[nChannelId].state;
+}
+
+BOOL CIOController::SimulateWriteHardware(int nChannelId, IOChannelState state)
+{
+    // 模拟硬件写入
+    // 实际应用中，这里应该调用硬件驱动API
+    
+    // 模拟写入总是成功
+    return TRUE;
+}

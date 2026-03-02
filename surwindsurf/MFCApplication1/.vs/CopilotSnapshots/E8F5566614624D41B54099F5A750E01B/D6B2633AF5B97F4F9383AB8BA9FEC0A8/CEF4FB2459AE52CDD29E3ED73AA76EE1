@@ -1,0 +1,182 @@
+﻿//Microsoft Visual C++ generated resource.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#ifndef APSTUDIO_INVOKED
+#include "targetver.h"
+#endif
+#include "afxres.h"
+#include "verrsrc.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// 中文(简体，中国) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE 4, 2
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 170, 62
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "关于 MFCApplication1"
+FONT 9, "MS Shell Dlg"
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,14,14,21,20
+    LTEXT           "MFCApplication1，版本 1.0",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "版权所有 (C) 2024",IDC_STATIC,42,26,114,8
+    DEFPUSHBUTTON   "确定",IDOK,113,41,50,14,WS_GROUP
+END
+
+IDD_MFCAPPLICATION1_DIALOG DIALOGEX 0, 0, 800, 600
+STYLE WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "硬件设备控制系统"
+FONT 9, "MS Shell Dlg"
+BEGIN
+    // 232串口控制组
+    GROUPBOX        "232串口控制", IDC_GROUP_232, 7, 7, 385, 140
+    LTEXT           "串口:", IDC_STATIC, 15, 25, 30, 8
+    COMBOBOX        IDC_COMBO_COM232, 50, 23, 60, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "波特率:", IDC_STATIC, 120, 25, 35, 8
+    COMBOBOX        IDC_COMBO_BAUDRATE232, 160, 23, 70, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "数据位:", IDC_STATIC, 240, 25, 35, 8
+    COMBOBOX        IDC_COMBO_DATABITS232, 280, 23, 50, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "停止位:", IDC_STATIC, 15, 45, 30, 8
+    COMBOBOX        IDC_COMBO_STOPBITS232, 50, 43, 60, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "校验位:", IDC_STATIC, 120, 45, 35, 8
+    COMBOBOX        IDC_COMBO_PARITY232, 160, 43, 70, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "打开", IDC_BUTTON_OPEN232, 240, 43, 90, 18
+    LTEXT           "发送:", IDC_STATIC, 15, 68, 30, 8
+    EDITTEXT        IDC_EDIT_SEND232, 50, 66, 230, 14, ES_AUTOHSCROLL
+    PUSHBUTTON      "发送", IDC_BUTTON_SEND232, 290, 66, 40, 14
+    CONTROL         "十六进制", IDC_CHECK_HEX232, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 340, 68, 50, 10
+    LTEXT           "接收:", IDC_STATIC, 15, 88, 30, 8
+    EDITTEXT        IDC_EDIT_RECEIVE232, 15, 100, 365, 35, ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    PUSHBUTTON      "清空", IDC_BUTTON_CLEAR232, 340, 85, 40, 14
+
+    // 485串口控制组
+    GROUPBOX        "485串口控制", IDC_GROUP_485, 405, 7, 385, 140
+    LTEXT           "串口:", IDC_STATIC, 413, 25, 30, 8
+    COMBOBOX        IDC_COMBO_COM485, 448, 23, 60, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "波特率:", IDC_STATIC, 518, 25, 35, 8
+    COMBOBOX        IDC_COMBO_BAUDRATE485, 558, 23, 70, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "数据位:", IDC_STATIC, 638, 25, 35, 8
+    COMBOBOX        IDC_COMBO_DATABITS485, 678, 23, 50, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "停止位:", IDC_STATIC, 413, 45, 30, 8
+    COMBOBOX        IDC_COMBO_STOPBITS485, 448, 43, 60, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "校验位:", IDC_STATIC, 518, 45, 35, 8
+    COMBOBOX        IDC_COMBO_PARITY485, 558, 43, 70, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "打开", IDC_BUTTON_OPEN485, 638, 43, 90, 18
+    LTEXT           "发送:", IDC_STATIC, 413, 68, 30, 8
+    EDITTEXT        IDC_EDIT_SEND485, 448, 66, 230, 14, ES_AUTOHSCROLL
+    PUSHBUTTON      "发送", IDC_BUTTON_SEND485, 688, 66, 40, 14
+    CONTROL         "十六进制", IDC_CHECK_HEX485, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 738, 68, 50, 10
+    LTEXT           "接收:", IDC_STATIC, 413, 88, 30, 8
+    EDITTEXT        IDC_EDIT_RECEIVE485, 413, 100, 365, 35, ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    PUSHBUTTON      "清空", IDC_BUTTON_CLEAR485, 738, 85, 40, 14
+
+    // 机械臂控制组
+    GROUPBOX        "机械臂控制", IDC_GROUP_ROBOT, 7, 155, 385, 180
+    LTEXT           "串口:", IDC_STATIC, 15, 173, 30, 8
+    COMBOBOX        IDC_COMBO_COM_ROBOT, 50, 171, 60, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "波特率:", IDC_STATIC, 120, 173, 35, 8
+    COMBOBOX        IDC_COMBO_BAUDRATE_ROBOT, 160, 171, 70, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "连接", IDC_BUTTON_CONNECT_ROBOT, 240, 171, 60, 18
+    LTEXT           "状态:", IDC_STATIC, 310, 173, 30, 8
+    LTEXT           "未连接", IDC_STATIC_ROBOT_STATUS, 345, 173, 40, 8
+    PUSHBUTTON      "初始化", IDC_BUTTON_INIT_ROBOT, 15, 200, 60, 22
+    PUSHBUTTON      "归零", IDC_BUTTON_HOME_ROBOT, 85, 200, 60, 22
+    PUSHBUTTON      "开始", IDC_BUTTON_START_ROBOT, 155, 200, 60, 22
+    PUSHBUTTON      "停止", IDC_BUTTON_STOP_ROBOT, 225, 200, 60, 22
+    PUSHBUTTON      "急停", IDC_BUTTON_ESTOP_ROBOT, 295, 200, 60, 22
+    LTEXT           "X坐标:", IDC_STATIC, 15, 232, 35, 8
+    EDITTEXT        IDC_EDIT_X_POS, 55, 230, 60, 14, ES_AUTOHSCROLL
+    LTEXT           "Y坐标:", IDC_STATIC, 125, 232, 35, 8
+    EDITTEXT        IDC_EDIT_Y_POS, 165, 230, 60, 14, ES_AUTOHSCROLL
+    LTEXT           "Z坐标:", IDC_STATIC, 235, 232, 35, 8
+    EDITTEXT        IDC_EDIT_Z_POS, 275, 230, 60, 14, ES_AUTOHSCROLL
+    LTEXT           "速度: 50%", IDC_STATIC_SPEED, 15, 255, 100, 8
+    CONTROL         "", IDC_SLIDER_SPEED, "msctls_trackbar32", TBS_BOTH | TBS_NOTICKS | WS_TABSTOP, 15, 268, 360, 20
+    LTEXT           "预设位置:", IDC_STATIC, 15, 295, 50, 8
+    PUSHBUTTON      "位置1", IDC_BUTTON_POS1, 70, 293, 60, 22
+    PUSHBUTTON      "位置2", IDC_BUTTON_POS2, 140, 293, 60, 22
+    PUSHBUTTON      "位置3", IDC_BUTTON_POS3, 210, 293, 60, 22
+
+    // I/O控制组
+    GROUPBOX        "I/O接口控制（医疗设备）", IDC_GROUP_IO, 405, 155, 385, 180
+    PUSHBUTTON      "初始化I/O", IDC_BUTTON_IO_INIT, 415, 173, 80, 22
+    LTEXT           "硬件状态: 未连接", IDC_STATIC_IO_HW_STATUS, 505, 177, 150, 8
+    LTEXT           "输液传感器: 低", IDC_STATIC_IO1_STATUS, 415, 205, 150, 8
+    LTEXT           "消毒液传感器: 低", IDC_STATIC_IO2_STATUS, 415, 225, 150, 8
+    LTEXT           "输液开关: 关", IDC_STATIC_IO3_STATUS, 415, 250, 150, 8
+    PUSHBUTTON      "打开输液开关", IDC_BUTTON_INFUSION_OPEN, 575, 248, 80, 18
+    PUSHBUTTON      "关闭输液开关", IDC_BUTTON_INFUSION_CLOSE, 665, 248, 80, 18
+    LTEXT           "消毒液开关: 关", IDC_STATIC_IO4_STATUS, 415, 275, 150, 8
+    PUSHBUTTON      "打开消毒液开关", IDC_BUTTON_DISINFECT_OPEN, 575, 273, 80, 18
+    PUSHBUTTON      "关闭消毒液开关", IDC_BUTTON_DISINFECT_CLOSE, 665, 273, 80, 18
+
+    // 日志显示组
+    GROUPBOX        "日志显示", IDC_GROUP_LOG, 7, 343, 783, 230
+    CONTROL         "", IDC_LIST_LOG, "SysListView32", LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP, 15, 360, 760, 185
+    PUSHBUTTON      "导出日志", IDC_BUTTON_EXPORT_LOG, 640, 553, 70, 18
+    PUSHBUTTON      "清空日志", IDC_BUTTON_CLEAR_LOG, 720, 553, 70, 18
+END
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 163
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 55
+    END
+
+    IDD_MFCAPPLICATION1_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 793
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 593
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_ABOUTBOX            "关于 MFCApplication1(&A)..."
+END
+
+#endif    // 中文(简体，中国) resources
+/////////////////////////////////////////////////////////////////////////////
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED#endif    // not APSTUDIO_INVOKED

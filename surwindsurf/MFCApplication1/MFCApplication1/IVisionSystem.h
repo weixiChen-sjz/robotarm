@@ -1,0 +1,85 @@
+#pragma once
+
+// 视觉系统抽象接口
+// 便于后续集成真实的 RealSense + YOLO 视觉系统
+
+class IVisionSystem
+{
+public:
+	virtual ~IVisionSystem() {}
+
+	// ========== Step4：IR图像XY闭环（占位接口，不绑定RealSense SDK） ==========
+	// 目标：
+	// - 从IR图像检测红外激光光斑中心像素坐标 (u, v)
+	// - 从IR图像检测穿刺点中心像素坐标 (u, v)
+	//
+	// 注意：
+	// - 当前工程先提供接口与默认实现，后续集成D435时再填充真实实现
+	// - 返回TRUE表示检测成功
+	virtual BOOL DetectLaserSpotPixelIR(int& u, int& v)
+	{
+		return FALSE;
+	}
+
+	virtual BOOL DetectPuncturePointPixelIR(int& u, int& v)
+	{
+		return FALSE;
+	}
+	
+	// ========== 粗定位：识别模型目标 ==========
+	// 功能：通过YOLO识别硅胶模型，RealSense获取三维坐标
+	// 输出：相机坐标系下的目标位置 (x, y, z) 单位：mm
+	// 返回值：TRUE=成功识别，FALSE=识别失败
+	virtual BOOL DetectModel(float& x, float& y, float& z) = 0;
+	
+	// ========== 精定位：识别穿刺点 ==========
+	// 功能：识别目标穿刺点的精确位置
+	// 输出：相机坐标系下的穿刺点坐标 (x, y, z) 单位：mm
+	// 返回值：TRUE=成功识别，FALSE=识别失败
+	virtual BOOL DetectPuncturePoint(float& x, float& y, float& z) = 0;
+	
+	// ========== 可选：获取穿刺姿态角度 ==========
+	// 功能：根据视觉识别结果，计算最佳穿刺角度（Theta）
+	// 输入：camX, camY, camZ - 穿刺点的相机坐标
+	// 返回值：推荐的穿刺角度（度），默认返回0（垂直穿刺）
+	virtual float GetPunctureAngle(float camX, float camY, float camZ)
+	{
+		// 默认实现：返回垂直穿刺角度0度
+		// 如果视觉系统支持角度检测，可以重写此方法
+		return 0.0f;
+	}
+	
+	// ========== 坐标转换：相机坐标系 → 机械臂坐标系 ==========
+	// 功能：将相机坐标转换为机械臂可用的坐标
+	// 输入：camX, camY, camZ - 相机坐标系坐标（mm）
+	// 输出：robotX, robotY, robotZ - 机械臂坐标系坐标（mm）
+	virtual void TransformCoordinate(
+		float camX, float camY, float camZ,
+		float& robotX, float& robotY, float& robotZ) = 0;
+	
+	// ========== 系统状态查询 ==========
+	// 检查视觉系统是否已连接
+	virtual BOOL IsConnected() = 0;
+	
+	// 检查视觉系统是否已标定（手眼标定）
+	virtual BOOL IsCalibrated() = 0;
+	
+	// ========== 可选：获取原始图像 ==========
+	// 功能：获取当前帧图像（用于调试）
+	// 参数：pImageData - 图像数据缓冲区
+	//       nWidth, nHeight - 图像宽高
+	// 返回值：TRUE=成功，FALSE=失败
+	virtual BOOL GetCurrentFrame(BYTE* pImageData, int& nWidth, int& nHeight)
+	{
+		// 默认实现：不支持
+		return FALSE;
+	}
+	
+	// ========== 可选：设置标定参数 ==========
+	// 功能：设置手眼标定矩阵（相机与机械臂的变换关系）
+	// 参数：pTransformMatrix - 4x4变换矩阵
+	virtual void SetCalibrationMatrix(const float* pTransformMatrix)
+	{
+		// 默认实现：不做任何操作
+	}
+};

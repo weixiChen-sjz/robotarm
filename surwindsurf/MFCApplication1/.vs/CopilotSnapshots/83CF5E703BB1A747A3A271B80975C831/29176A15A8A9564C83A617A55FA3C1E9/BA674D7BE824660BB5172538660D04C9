@@ -1,0 +1,65 @@
+﻿#pragma once
+#include <Windows.h>
+#include <vector>
+#include <fstream>
+
+// 日志级别
+enum LogLevel
+{
+    LOG_INFO = 0,
+    LOG_WARNING,
+    LOG_ERROR
+};
+
+// 日志条目
+struct LogEntry
+{
+    CString strTime;        // 时间戳
+    CString strModule;      // 模块名称
+    LogLevel level;         // 日志级别
+    CString strMessage;     // 消息内容
+    
+    LogEntry()
+        : level(LOG_INFO)
+    {}
+};
+
+class CLogManager
+{
+public:
+    static CLogManager& GetInstance();
+    
+    // 添加日志
+    void AddLog(const CString& strModule, LogLevel level, const CString& strMessage);
+    
+    // 获取所有日志
+    const std::vector<LogEntry>& GetAllLogs() const { return m_logs; }
+    
+    // 清空日志
+    void ClearLogs();
+    
+    // 导出日志到文件
+    BOOL ExportToFile(const CString& strFilePath);
+    
+    // 设置日志回调（用于通知UI更新）
+    typedef void (*LogCallback)(const LogEntry& entry, void* pUserData);
+    void SetLogCallback(LogCallback callback, void* pUserData);
+
+private:
+    CLogManager();
+    ~CLogManager();
+    
+    CLogManager(const CLogManager&) = delete;
+    CLogManager& operator=(const CLogManager&) = delete;
+    
+    std::vector<LogEntry> m_logs;
+    CRITICAL_SECTION m_cs;
+    LogCallback m_callback;
+    void* m_pCallbackUserData;
+    
+    // 获取当前时间字符串
+    CString GetCurrentTimeString();
+    
+    // 获取日志级别字符串
+    CString GetLevelString(LogLevel level);
+};

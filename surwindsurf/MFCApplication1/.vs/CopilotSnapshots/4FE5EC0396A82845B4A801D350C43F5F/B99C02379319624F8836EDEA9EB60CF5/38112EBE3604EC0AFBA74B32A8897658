@@ -1,0 +1,198 @@
+﻿#pragma once
+#include <Windows.h>
+#include "EVOC_BPI_DLL.h"  // GPIO硬件控制接口
+
+// I/O 通道类型
+enum IOChannelType
+{
+    IO_TYPE_INPUT = 0,
+    IO_TYPE_OUTPUT
+};
+
+// I/O 通道状态
+enum IOChannelState
+{
+    IO_STATE_LOW = 0,
+    IO_STATE_HIGH = 1,
+    IO_STATE_UNKNOWN = -1
+};
+
+// 硬件连接状态
+enum IOHardwareState
+{
+    IO_HW_DISCONNECTED = 0,  // 未连接
+    IO_HW_CONNECTED = 1,     // 已连接
+    IO_HW_ERROR = 2          // 连接错误
+};
+
+// 硬件类型
+enum IOHardwareType
+{
+    IO_HW_TYPE_GPIO = 0,     // GPIO硬件（EVOC BPI）
+    IO_HW_TYPE_COM = 1,      // 串口I/O设备
+    IO_HW_TYPE_USB = 2,      // USB I/O设备
+    IO_HW_TYPE_PCI = 3,      // PCI I/O卡
+    IO_HW_TYPE_DEVICE = 4    // 自定义设备路径
+};
+
+// 硬件配置
+struct IOHardwareConfig
+{
+    IOHardwareType type;     // 硬件类型
+    CString strDevicePath;   // 设备路径或COM端口
+    WORD wVendorID;          // USB厂商ID（仅USB类型使用）
+    WORD wProductID;         // USB产品ID（仅USB类型使用）
+    
+    IOHardwareConfig()
+        : type(IO_HW_TYPE_GPIO)  // 默认使用GPIO
+        , strDevicePath(_T(""))
+        , wVendorID(0)
+        , wProductID(0)
+    {}
+};
+
+// GPIO引脚映射定义
+// 输入引脚：1-4（对应bit 0-3）
+// 输出引脚：5-8（对应bit 4-7）
+#define GPIO_PIN_INPUT_1     0    // 输入1（bit 0）→ 输液传感器
+#define GPIO_PIN_INPUT_2     1    // 输入2（bit 1）→ 消毒液传感器
+#define GPIO_PIN_INPUT_3     2    // 输入3（bit 2）→ 保留
+#define GPIO_PIN_INPUT_4     3    // 输入4（bit 3）→ 保留
+#define GPIO_PIN_OUTPUT_1    4    // 输出1（bit 4/pin 5）→ 输液开关
+#define GPIO_PIN_OUTPUT_2    5    // 输出2（bit 5/pin 6）→ 消毒液开关
+#define GPIO_PIN_OUTPUT_3    6    // 输出3（bit 6/pin 7）→ 保留
+#define GPIO_PIN_OUTPUT_4    7    // 输出4（bit 7/pin 8）→ 保留
+
+// 设备映射定义（逻辑通道到GPIO引脚）
+#define IO_DEVICE_INFUSION_INPUT    GPIO_PIN_INPUT_1    // 输液传感器输入
+#define IO_DEVICE_DISINFECT_INPUT   GPIO_PIN_INPUT_2    // 消毒液传感器输入
+#define IO_DEVICE_INFUSION_OUTPUT   GPIO_PIN_OUTPUT_1   // 输液开关输出
+#define IO_DEVICE_DISINFECT_OUTPUT  GPIO_PIN_OUTPUT_2   // 消毒液开关输出
+
+// I/O 通道信息
+struct IOChannelInfo
+{
+    int nChannelId;           // 通道ID
+    IOChannelType type;       // 通道类型
+    IOChannelState state;     // 当前状态
+    CString strName;          // 通道名称
+    CString strDeviceName;    // 设备名称
+    int nGPIOPin;             // GPIO物理引脚号（1-8）
+    int nGPIOBit;             // GPIO位号（0-7）
+    
+    IOChannelInfo() 
+        : nChannelId(0)
+        , type(IO_TYPE_INPUT)
+        , state(IO_STATE_UNKNOWN)
+        , strName(_T(""))
+        , strDeviceName(_T(""))
+        , nGPIOPin(0)
+        , nGPIOBit(0)
+    {}
+};
+
+class CIOController
+{
+public:
+    CIOController();
+    ~CIOController();
+
+    // 初始化 I/O 控制器
+    BOOL Initialize();
+    
+    // 关闭 I/O 控制器
+    void Shutdown();
+    
+    // 读取输入通道状态
+    IOChannelState ReadInput(int nChannelId);
+    
+    // 设置输出通道状态
+    BOOL WriteOutput(int nChannelId, IOChannelState state);
+    
+    // 获取通道信息
+    BOOL GetChannelInfo(int nChannelId, IOChannelInfo& info);
+    
+    // 设置通道信息
+    void SetChannelInfo(int nChannelId, const IOChannelInfo& info);
+    
+    // 刷新所有输入通道状态
+    void RefreshInputs();
+    
+    // 检查是否已初始化
+    BOOL IsInitialized() const { return m_bInitialized; }
+    
+    // 获取硬件连接状态
+    IOHardwareState GetHardwareState() const { return m_hwState; }
+    
+    // 检查硬件是否已连接
+    BOOL IsHardwareConnected() const { return m_hwState == IO_HW_CONNECTED; }
+    
+    // 获取硬件状态描述
+    CString GetHardwareStateText() const;
+    
+    // 配置硬件参数（在Initialize之前调用）
+    void SetHardwareConfig(const IOHardwareConfig& config);
+    IOHardwareConfig GetHardwareConfig() const { return m_hwConfig; }
+    
+    // 测试用：模拟输入状态变化（仅用于测试，实际硬件不需要此方法）
+    void SimulateInputChange(int nChannelId, IOChannelState newState);
+    
+    // 设备控制方法（业务层封装）
+    BOOL OpenInfusionSwitch();      // 打开输液开关
+    BOOL CloseInfusionSwitch();     // 关闭输液开关
+    BOOL OpenDisinfectSwitch();     // 打开消毒液开关
+    BOOL CloseDisinfectSwitch();    // 关闭消毒液开关
+    BOOL GetInfusionSensorState();  // 获取输液传感器状态
+    BOOL GetDisinfectSensorState(); // 获取消毒液传感器状态
+
+private:
+    BOOL m_bInitialized;              // 是否已初始化
+    IOHardwareState m_hwState;        // 硬件连接状态
+    IOHardwareConfig m_hwConfig;      // 硬件配置
+    HANDLE m_hDevice;                 // 设备句柄（非GPIO使用）
+    IOChannelInfo m_channels[4];      // 4个通道：2个输入+2个输出
+    
+    // GPIO相关
+    BOOL m_bGPIOInitialized;          // GPIO是否已初始化
+    BYTE m_lastInputLevels;           // 上次读取的输入电平（用于边缘检测）
+    BYTE m_currentOutputLevels;       // 当前输出电平状态
+    
+    // 检测硬件连接
+    BOOL DetectHardware();
+    
+    // GPIO硬件检测
+    BOOL DetectGPIODevice();
+    
+    // GPIO初始化
+    BOOL InitializeGPIO();
+    
+    // GPIO关闭
+    void ShutdownGPIO();
+    
+    // GPIO读取（返回所有输入的字节）
+    BOOL ReadGPIOInputs(BYTE& levels);
+    
+    // GPIO写入（设置所有输出的字节）
+    BOOL WriteGPIOOutputs(BYTE levels);
+    
+    // GPIO单引脚操作
+    BOOL SetGPIOPin(int pin, BOOL bHigh);
+    BOOL GetGPIOPin(int pin, BOOL& bHigh);
+    
+    // 不同类型的硬件检测
+    BOOL DetectCOMDevice(const CString& strCOMPort);
+    BOOL DetectUSBDevice(WORD wVID, WORD wPID);
+    BOOL DetectDevicePath(const CString& strPath);
+    
+    // 打开硬件设备
+    BOOL OpenHardwareDevice();
+    
+    // 关闭硬件设备
+    void CloseHardwareDevice();
+    
+    // 通用硬件读取（根据类型调用不同实现）
+    IOChannelState ReadHardware(int nChannelId);
+    
+    // 通用硬件写入（根据类型调用不同实现）
+    BOOL WriteHardware(int nChannelId, IOChannelState state);
+};

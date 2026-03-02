@@ -1,0 +1,152 @@
+#include <Windows.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#include "IOBridgeProtocol.h"
+
+// Reuse existing IO controller implementation.
+// IOBridge must be built as Win32 (x86) so it can load EVOC_BPI_DLL.dll (32-bit).
+#include "../MFCApplication1/IOController.h"
+#include "../MFCApplication1/IOController.cpp"
+
+static void WriteResponse(HANDLE hPipe, const IOBridge::Response& resp)
+{
+	DWORD written = 0;
+	WriteFile(hPipe, &resp, sizeof(resp), &written, nullptr);
+}
+
+static IOBridge::Response MakeError(int32_t status)
+{
+	IOBridge::Response r{};
+	r.magic = IOBridge::kMagic;
+	r.version = IOBridge::kVersion;
+	r.status = status;
+	r.payloadSize = 0;
+	return r;
+}
+
+static IOBridge::Response Handle(CIOController& io, const IOBridge::Request& req)
+{
+	if (req.magic != IOBridge::kMagic || req.version != IOBridge::kVersion)
+		return MakeError(-100);
+
+	IOBridge::Response resp{};
+	resp.magic = IOBridge::kMagic;
+	resp.version = IOBridge::kVersion;
+	resp.status = 0;
+	resp.payloadSize = 0;
+
+	switch (static_cast<IOBridge::Command>(req.command))
+	{
+	case IOBridge::Command::Ping:
+		return resp;
+	case IOBridge::Command::Initialize:
+		resp.status = io.Initialize() ? 0 : -1;
+		return resp;
+	case IOBridge::Command::Shutdown:
+		io.Shutdown();
+		return resp;
+	case IOBridge::Command::ProcessGPIO:
+		io.ProcessGPIO();
+		return resp;
+	case IOBridge::Command::OpenInfusionSwitch:
+		resp.status = io.OpenInfusionSwitch() ? 0 : -1;
+		return resp;
+	case IOBridge::Command::CloseInfusionSwitch:
+		resp.status = io.CloseInfusionSwitch() ? 0 : -1;
+		return resp;
+	case IOBridge::Command::OpenDisinfectSwitch:
+		resp.status = io.OpenDisinfectSwitch() ? 0 : -1;
+		return resp;
+	case IOBridge::Command::CloseDisinfectSwitch:
+		resp.status = io.CloseDisinfectSwitch() ? 0 : -1;
+		return resp;
+	case IOBridge::Command::OpenLaserSwitch:
+		resp.status = io.OpenLaserSwitch() ? 0 : -1;
+		return resp;
+	case IOBridge::Command::CloseLaserSwitch:
+		resp.status = io.CloseLaserSwitch() ? 0 : -1;
+		return resp;
+	case IOBridge::Command::GetInfusionSensorState:
+	{
+		uint8_t v = io.GetInfusionSensorState() ? 1 : 0;
+		resp.payload[0] = v;
+		resp.payloadSize = 1;
+		return resp;
+	}
+	case IOBridge::Command::GetDisinfectSensorState:
+	{
+		uint8_t v = io.GetDisinfectSensorState() ? 1 : 0;
+		resp.payload[0] = v;
+		resp.payloadSize = 1;
+		return resp;
+	}
+	case IOBridge::Command::GetLaserSensorState:
+	{
+		uint8_t v = io.GetLaserSensorState() ? 1 : 0;
+		resp.payload[0] = v;
+		resp.payloadSize = 1;
+		return resp;
+	}
+	case IOBridge::Command::GetGPIOLevels:
+	{
+		resp.payload[0] = io.GetGPIOLevels();
+		resp.payloadSize = 1;
+		return resp;
+	}
+	case IOBridge::Command::GetSwitchStates:
+	{
+		IOBridge::SwitchStates st{};
+		st.infusionOpen = io.GetInfusionSwitchState() ? 1 : 0;
+		st.disinfectOpen = io.GetDisinfectSwitchState() ? 1 : 0;
+		st.laserOpen = io.GetLaserSwitchState() ? 1 : 0;
+		memcpy(resp.payload, &st, sizeof(st));
+		resp.payloadSize = sizeof(st);
+		return resp;
+	}
+	default:
+		return MakeError(-101);
+	}
+}
+
+int wmain()
+{
+	CIOController io;
+
+	for (;;)
+	{
+		HANDLE hPipe = CreateNamedPipeW(
+			IOBridge::kPipeName,
+			PIPE_ACCESS_DUPLEX,
+			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+			PIPE_UNLIMITED_INSTANCES,
+			sizeof(IOBridge::Response),
+			sizeof(IOBridge::Request),
+			0,
+			nullptr);
+
+		if (hPipe == INVALID_HANDLE_VALUE)
+			return 2;
+
+		BOOL ok = ConnectNamedPipe(hPipe, nullptr) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
+		if (!ok)
+		{
+			CloseHandle(hPipe);
+			continue;
+		}
+
+		for (;;)
+		{
+			IOBridge::Request req{};
+			DWORD read = 0;
+			if (!ReadFile(hPipe, &req, sizeof(req), &read, nullptr) || read == 0)
+				break;
+
+			IOBridge::Response resp = Handle(io, req);
+			WriteResponse(hPipe, resp);
+		}
+
+		DisconnectNamedPipe(hPipe);
+		CloseHandle(hPipe);
+	}
+}

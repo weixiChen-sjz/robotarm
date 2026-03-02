@@ -1,0 +1,135 @@
+﻿#include "pch.h"
+#include "LogManager.h"
+#include <time.h>
+
+CLogManager& CLogManager::GetInstance()
+{
+    static CLogManager instance;
+    return instance;
+}
+
+CLogManager::CLogManager()
+    : m_callback(nullptr)
+    , m_pCallbackUserData(nullptr)
+{
+    InitializeCriticalSection(&m_cs);
+}
+
+CLogManager::~CLogManager()
+{
+    DeleteCriticalSection(&m_cs);
+}
+
+void CLogManager::AddLog(const CString& strModule, LogLevel level, const CString& strMessage)
+{
+    EnterCriticalSection(&m_cs);
+
+    LogEntry entry;
+    entry.strTime = GetCurrentTimeString();
+    entry.strModule = strModule;
+    entry.level = level;
+    entry.strMessage = strMessage;
+
+    m_logs.push_back(entry);
+
+    // 限制日志数量，避免内存占用过大
+    if (m_logs.size() > 10000)
+    {
+        m_logs.erase(m_logs.begin());
+    }
+
+    LeaveCriticalSection(&m_cs);
+
+    // 通知回调
+    if (m_callback != nullptr)
+    {
+        m_callback(entry, m_pCallbackUserData);
+    }
+}
+
+void CLogManager::ClearLogs()
+{
+    EnterCriticalSection(&m_cs);
+    m_logs.clear();
+    LeaveCriticalSection(&m_cs);
+}
+
+BOOL CLogManager::ExportToFile(const CString& strFilePath)
+{
+    EnterCriticalSection(&m_cs);
+
+    try
+    {
+        std::ofstream file;
+        file.open(strFilePath, std::ios::out | std::ios::trunc);
+        
+        if (!file.is_open())
+        {
+            LeaveCriticalSection(&m_cs);
+            return FALSE;
+        }
+
+        // 写入UTF-8 BOM
+        file << "\xEF\xBB\xBF";
+
+        // 写入表头
+        CStringA strHeader("时间\t模块\t级别\t消息\r\n");
+        file << strHeader.GetString();
+
+        // 写入日志内容
+        for (const auto& entry : m_logs)
+        {
+            CStringA strLine;
+            strLine.Format("%s\t%s\t%s\t%s\r\n",
+                CStringA(entry.strTime).GetString(),
+                CStringA(entry.strModule).GetString(),
+                CStringA(GetLevelString(entry.level)).GetString(),
+                CStringA(entry.strMessage).GetString());
+            
+            file << strLine.GetString();
+        }
+
+        file.close();
+        LeaveCriticalSection(&m_cs);
+        return TRUE;
+    }
+    catch (...)
+    {
+        LeaveCriticalSection(&m_cs);
+        return FALSE;
+    }
+}
+
+void CLogManager::SetLogCallback(LogCallback callback, void* pUserData)
+{
+    m_callback = callback;
+    m_pCallbackUserData = pUserData;
+}
+
+CString CLogManager::GetCurrentTimeString()
+{
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+
+    CString strTime;
+    strTime.Format(_T("%04d-%02d-%02d %02d:%02d:%02d.%03d"),
+        st.wYear, st.wMonth, st.wDay,
+        st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+
+    return strTime;
+}
+
+CString CLogManager::GetLevelString(LogLevel level)
+{
+    switch (level)
+    {
+    case LOG_INFO:
+        return _T("信息");
+    case LOG_WARNING:
+        return _T("警告");
+    case LOG_ERROR:
+        return _T("错误");
+    default:
+        return _T("未知");
+    }
+}

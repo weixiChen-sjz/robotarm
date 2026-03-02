@@ -1,0 +1,1261 @@
+﻿#include "pch.h"
+#include "ProcedureController.h"
+#include "LogManager.h"
+#include <process.h>
+
+CProcedureController::CProcedureController()
+{
+	// 初始化硬件接口为空
+	m_pRobotArm = nullptr;
+	m_pSerial232 = nullptr;
+	m_pSerial485 = nullptr;
+	m_pIOController = nullptr;
+	m_pVision = nullptr;
+	m_bOwnVision = FALSE;  // ★ 新增：初始化所有权标志
+	
+	// 初始化状态
+	m_state = PROC_STATE_IDLE;
+	m_nCurrentStep = 0;
+	
+	// 初始化穿刺点
+	m_puncturePoint.X = 0;
+	m_puncturePoint.Y = 0;
+	m_puncturePoint.Z = 0;
+	
+	// 初始化回调函数
+	m_stateCallback = nullptr;
+	m_stateCallbackUserData = nullptr;
+	m_stepCallback = nullptr;
+	m_stepCallbackUserData = nullptr;
+	
+	// 初始化线程相关
+	m_hThread = NULL;
+	m_bThreadRunning = FALSE;
+	m_bStopRequest = FALSE;
+	m_bPauseRequest = FALSE;
+	
+	// 初始化临界区
+	InitializeCriticalSection(&m_cs);
+}
+
+CProcedureController::~CProcedureController()
+{
+	// 停止线程
+	if (m_hThread)
+	{
+		m_bStopRequest = TRUE;
+		
+		// ★ 改进：检查等待结果
+		DWORD dwRet = WaitForSingleObject(m_hThread, 5000);
+		if (dwRet == WAIT_TIMEOUT)
+		{
+			LogWarning(_T("流程线程5秒内未退出，强制终止"));
+			TerminateThread(m_hThread, 1);
+		}
+		
+		CloseHandle(m_hThread);
+		m_hThread = NULL;
+	}
+	
+	// ★ 新增：释放视觉系统
+	if (m_bOwnVision && m_pVision)
+	{
+		delete m_pVision;
+		m_pVision = nullptr;
+	}
+	
+	// 删除临界区
+	DeleteCriticalSection(&m_cs);
+}
+
+// ========== 初始化 ==========
+
+void CProcedureController::SetRobotArm(CRobotArmController* pRobotArm)
+{
+	m_pRobotArm = pRobotArm;
+}
+
+void CProcedureController::SetSerial232(CSerialPort* pSerial232)
+{
+	m_pSerial232 = pSerial232;
+}
+
+void CProcedureController::SetSerial485(CSerialPort* pSerial485)
+{
+	m_pSerial485 = pSerial485;
+}
+
+void CProcedureController::SetIOController(CIOController* pIOController)
+{
+	m_pIOController = pIOController;
+}
+
+void CProcedureController::SetVisionSystem(IVisionSystem* pVision, BOOL bOwn)
+{
+	// ★ 先释放旧的视觉系统
+	if (m_bOwnVision && m_pVision)
+	{
+		delete m_pVision;
+	}
+	
+	m_pVision = pVision;
+	m_bOwnVision = bOwn;
+}
+
+void CProcedureController::SetParams(const ProcedureParams& params)
+{
+	EnterCriticalSection(&m_cs);
+	m_params = params;
+	LeaveCriticalSection(&m_cs);
+}
+
+// ========== 流程控制 ==========
+
+BOOL CProcedureController::StartProcedure()
+{
+	// 检查是否已在运行
+	if (m_state == PROC_STATE_RUNNING)
+	{
+		LogWarning(_T("流程已在运行中"));
+		return FALSE;
+	}
+	
+	// 检查硬件准备状态
+	if (!CheckHardwareReady())
+	{
+		LogError(_T("硬件未就绪，无法启动流程"));
+		return FALSE;
+	}
+	
+	// 验证参数
+	if (!m_params.Validate())
+	{
+		LogError(_T("流程参数无效"));
+		return FALSE;
+	}
+	
+	// 停止旧线程（如果存在）
+	if (m_hThread)
+	{
+		m_bStopRequest = TRUE;
+		WaitForSingleObject(m_hThread, 3000);
+		CloseHandle(m_hThread);
+		m_hThread = NULL;
+	}
+	
+	// 重置状态
+	m_bStopRequest = FALSE;
+	m_bPauseRequest = FALSE;
+	m_nCurrentStep = 0;
+	
+	// 启动线程执行流程
+	m_hThread = (HANDLE)_beginthreadex(NULL, 0, ThreadFunc, this, 0, NULL);
+	if (!m_hThread)
+	{
+		LogError(_T("启动流程线程失败"));
+		return FALSE;
+	}
+	
+	NotifyStateChange(PROC_STATE_RUNNING);
+	LogInfo(_T("========== 开始执行穿刺流程 =========="));
+	
+	return TRUE;
+}
+
+void CProcedureController::StopProcedure()
+{
+	if (m_state != PROC_STATE_RUNNING && m_state != PROC_STATE_PAUSED)
+	{
+		return;
+	}
+	
+	LogWarning(_T("用户手动停止流程"));
+	m_bStopRequest = TRUE;
+	m_bPauseRequest = FALSE;  // 取消暂停
+	
+	// 等待线程结束
+	if (m_hThread)
+	{
+		WaitForSingleObject(m_hThread, 3000);
+	}
+	
+	NotifyStateChange(PROC_STATE_STOPPED);
+}
+
+void CProcedureController::PauseProcedure()
+{
+	if (m_state != PROC_STATE_RUNNING)
+	{
+		return;
+	}
+	
+	LogInfo(_T("流程已暂停"));
+	m_bPauseRequest = TRUE;
+	NotifyStateChange(PROC_STATE_PAUSED);
+}
+
+void CProcedureController::ResumeProcedure()
+{
+	if (m_state != PROC_STATE_PAUSED)
+	{
+		return;
+	}
+	
+	LogInfo(_T("流程已恢复"));
+	m_bPauseRequest = FALSE;
+	NotifyStateChange(PROC_STATE_RUNNING);
+}
+
+void CProcedureController::EmergencyStop()
+{
+	LogError(_T("!!! 紧急停止 !!!"));
+	
+	// 立即停止所有设备
+	if (m_pRobotArm && m_pRobotArm->IsConnected())
+	{
+		m_pRobotArm->EmergencyStop();
+	}
+	
+	if (m_pIOController && m_pIOController->IsInitialized())
+	{
+		m_pIOController->CloseInfusionSwitch();
+		m_pIOController->CloseDisinfectSwitch();
+		m_pIOController->CloseLaserSwitch();
+	}
+	
+	// 停止线程
+	m_bStopRequest = TRUE;
+	
+	NotifyStateChange(PROC_STATE_ERROR);
+}
+
+// ========== 单步执行 ==========
+
+BOOL CProcedureController::ExecuteStep(int stepNumber)
+{
+	if (m_state == PROC_STATE_RUNNING)
+	{
+		LogWarning(_T("流程运行中，无法单步执行"));
+		return FALSE;
+	}
+	
+	if (stepNumber < 1 || stepNumber > 7)
+	{
+		LogError(_T("步骤编号无效：%d"), stepNumber);
+		return FALSE;
+	}
+	
+	LogInfo(_T("===== 单步执行：步骤%d ====="), stepNumber);
+	
+	BOOL bResult = FALSE;
+	switch (stepNumber)
+	{
+	case 1: bResult = ExecuteStep1_VisionLocate(); break;
+	case 2: bResult = ExecuteStep2_LaserCoarseAdjust(); break;
+	case 3: bResult = ExecuteStep3_DetectPuncturePoint(); break;
+	case 4: bResult = ExecuteStep4_PreciseAlignment(); break;
+	case 5: bResult = ExecuteStep5_Disinfection(); break;
+	case 6: bResult = ExecuteStep6_Puncture(); break;
+	case 7: bResult = ExecuteStep7_Infusion(); break;
+	}
+	
+	if (bResult)
+	{
+		LogInfo(_T("步骤%d 执行成功"), stepNumber);
+	}
+	else
+	{
+		LogError(_T("步骤%d 执行失败"), stepNumber);
+	}
+	
+	NotifyStepChange(stepNumber, bResult);
+	
+	return bResult;
+}
+
+// ========== 状态查询 ==========
+
+float CProcedureController::GetProgress() const
+{
+	if (m_nCurrentStep == 0)
+	{
+		return 0.0f;
+	}
+	
+	// 计算进度（0~100）
+	return (m_nCurrentStep * 100.0f) / 7.0f;
+}
+
+CString CProcedureController::GetStepName(int stepNumber) const
+{
+	switch (stepNumber)
+	{
+	case 1: return _T("视觉定位（YOLO识别硅胶模型）");
+	case 2: return _T("激光粗调（调整高度±2mm）");
+	case 3: return _T("识别穿刺点+调整姿态");
+	case 4: return _T("精准对位（激光点重合±0.2mm）");
+	case 5: return _T("喷消毒液（2秒）");
+	case 6: return _T("穿刺执行（电机运动）");
+	case 7: return _T("输液启动（打开输液阀）");
+	default: return _T("未知步骤");
+	}
+}
+
+// ========== 回调设置 ==========
+
+void CProcedureController::SetStateChangeCallback(StateChangeCallback callback, void* pUserData)
+{
+	m_stateCallback = callback;
+	m_stateCallbackUserData = pUserData;
+}
+
+void CProcedureController::SetStepChangeCallback(StepChangeCallback callback, void* pUserData)
+{
+	m_stepCallback = callback;
+	m_stepCallbackUserData = pUserData;
+}
+
+// ========== 辅助函数 ==========
+
+float CProcedureController::GetLaserDistance()
+{
+	// 从485串口读取激光测距数据
+	if (!m_pSerial485 || !m_pSerial485->IsOpen())
+	{
+		return -1.0f;  // 无效值
+	}
+
+	// 发送指令前清空缓冲，减少读到历史残留/粘包的概率
+	m_pSerial485->ClearBuffer();
+	
+	// ★ 【关键修复】发送测距指令
+	// 指令格式：01 04 00 18 00 02 F1 CC
+	// 01 - 设备地址
+	// 04 - 功能码（读输入寄存器）
+	// 00 18 - 起始地址（0x0018）
+	// 00 02 - 读取长度（2个寄存器，共4字节浮点数）
+	// F1 CC - CRC校验码
+	BYTE cmdBuffer[] = { 0x01, 0x04, 0x00, 0x18, 0x00, 0x02, 0xF1, 0xCC };
+	
+	if (!m_pSerial485->SendData((char*)cmdBuffer, sizeof(cmdBuffer), FALSE))
+	{
+		LogWarning(_T("发送激光测距指令失败"));
+		return -1.0f;
+	}
+	
+	// ★ 等待激光测距仪响应（建议100-150ms）
+	Sleep(120);
+
+	// 读取串口数据（考虑分包/粘包，做拼包与帧头同步）
+	BYTE rx[512];
+	DWORD total = 0;
+	const DWORD MAX_READ_LOOPS = 6;
+	const DWORD WANT_MIN = 9; // 01 04 04 + float(4) + crc(2)
+	for (DWORD loop = 0; loop < MAX_READ_LOOPS; ++loop)
+	{
+		char chunk[256];
+		DWORD dwBytesRead = 0;
+		if (!m_pSerial485->ReceiveData(chunk, sizeof(chunk), dwBytesRead))
+		{
+			Sleep(30);
+			continue;
+		}
+
+		if (dwBytesRead == 0)
+		{
+			Sleep(30);
+			continue;
+		}
+
+		DWORD copy = min<DWORD>(dwBytesRead, sizeof(rx) - total);
+		memcpy(rx + total, chunk, copy);
+		total += copy;
+
+		if (total < WANT_MIN)
+		{
+			Sleep(30);
+			continue;
+		}
+
+		// 在缓冲里寻找帧头 01 04 04
+		for (DWORD start = 0; start + WANT_MIN <= total; ++start)
+		{
+			if (rx[start] == 0x01 && rx[start + 1] == 0x04 && rx[start + 2] == 0x04)
+			{
+				float fDistance = 0.0f;
+				if (CSerialPort::ParseLaserDistance((const char*)(rx + start), total - start, fDistance))
+				{
+					// ★ 验证真实距离范围
+					// ParseLaserDistance() 已经换算为真实距离（200mm - 偏移值）
+					// 激光测距仪硬件有效范围：120-280mm
+					// 
+					// 示例：
+					// 偏移值 0mm   → 真实距离 = 200 - 0   = 200mm ✓
+					// 偏移值 48mm  → 真实距离 = 200 - 48  = 152mm ✓
+					// 偏移值 80mm  → 真实距离 = 200 - 80  = 120mm ✓
+					// 偏移值 -80mm → 真实距离 = 200 - (-80) = 280mm ✓
+					if (fDistance >= 120.0f && fDistance <= 280.0f)
+					{
+						return fDistance;  // 返回真实距离
+					}
+					LogWarning(_T("激光距离超出有效范围: %.2f mm (有效范围: 120-280mm)"), fDistance);
+				}
+			}
+		}
+
+		Sleep(30);
+	}
+	
+	// 如果多次读取失败，返回错误值（不使用模拟值）
+	LogError(_T("无法读取激光距离：连续3次读取失败，请检查485串口和激光测距仪"));
+	return -1.0f;  // 明确的错误值
+}
+
+BOOL CProcedureController::WaitForMotorComplete(int nTimeoutMs)
+{
+	// ★ 修复：电机不会返回任何信号，改为简单的超时等待
+	// 假设电机在指定时间内能够完成动作
+	
+	if (!m_pSerial232 || !m_pSerial232->IsOpen())
+	{
+		LogError(_T("232串口未打开"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("等待电机完成动作（预估时间: %d毫秒）..."), nTimeoutMs);
+	LogInfo(_T("注意：电机不返回完成信号，采用超时等待方式"));
+	
+	// 使用GetTickCount64()计时
+	ULONGLONG dwStart = GetTickCount64();
+	
+	// 分段等待，以便响应停止请求
+	const int STEP_MS = 200;  // 每200ms检查一次停止请求
+	
+	while ((GetTickCount64() - dwStart) < (ULONGLONG)nTimeoutMs)
+	{
+		// 检查停止请求
+		if (m_bStopRequest)
+		{
+			LogWarning(_T("收到停止请求，中断等待"));
+			return FALSE;
+		}
+		
+		// 检查暂停请求
+		while (m_bPauseRequest)
+		{
+			Sleep(100);
+			if (m_bStopRequest)
+			{
+				LogWarning(_T("暂停期间收到停止请求"));
+				return FALSE;
+			}
+		}
+		
+		Sleep(STEP_MS);
+	}
+	
+	// 超时时间到，假设电机已完成
+	LogInfo(_T("电机动作等待完成（已等待 %d 毫秒，未等待回包）"), nTimeoutMs);
+	return TRUE;
+}
+
+BOOL CProcedureController::UseManualPosition()
+{
+	// 视觉系统未启用，使用手动设定的预设位置或当前位置
+	LogWarning(_T("视觉系统未启用，使用预设坐标"));
+	
+	if (!m_pRobotArm || !m_pRobotArm->IsConnected())
+	{
+		LogError(_T("机械臂未连接"));
+		return FALSE;
+	}
+	
+	// 使用当前位置
+	RobotArmPosition currentPos = m_pRobotArm->GetCurrentPosition();
+	
+	LogInfo(_T("使用当前位置作为目标: (%.2f, %.2f, %.2f) mm"), 
+		currentPos.X, currentPos.Y, currentPos.Z);
+	
+	// 也可以使用预设坐标（如果有配置）
+	// RobotArmPosition presetPos(300.0f, 200.0f, 100.0f);
+	// return m_pRobotArm->MoveTo(presetPos, 50);
+	
+	return TRUE;  // 保持当前位置
+}
+
+BOOL CProcedureController::CheckHardwareReady()
+{
+	LogInfo(_T("检查硬件设备状态..."));
+	
+	// 检查机械臂
+	if (!m_pRobotArm || !m_pRobotArm->IsConnected())
+	{
+		LogError(_T("机械臂未连接"));
+		return FALSE;
+	}
+	
+	// 检查232串口（电机）
+	if (!m_pSerial232 || !m_pSerial232->IsOpen())
+	{
+		LogError(_T("232串口未打开（电机控制）"));
+		return FALSE;
+	}
+	
+	// 检查485串口（激光测距仪）
+	if (!m_pSerial485 || !m_pSerial485->IsOpen())
+	{
+		LogError(_T("485串口未打开（激光测距）"));
+		return FALSE;
+	}
+	
+	// 检查I/O控制器
+	if (!m_pIOController || !m_pIOController->IsInitialized())
+	{
+		LogError(_T("I/O控制器未初始化"));
+		return FALSE;
+	}
+	
+	// 检查I/O硬件连接
+	if (!m_pIOController->IsHardwareConnected())
+	{
+		LogWarning(_T("I/O硬件未连接，某些功能可能无法使用"));
+	}
+	
+	// 视觉系统是可选的
+	if (m_params.bEnableVision)
+	{
+		if (!m_pVision || !m_pVision->IsConnected())
+		{
+			LogWarning(_T("视觉系统已启用但未连接，将使用预设坐标"));
+		}
+		else if (!m_pVision->IsCalibrated())
+		{
+			LogWarning(_T("视觉系统未标定，坐标转换可能不准确"));
+		}
+	}
+	
+	LogInfo(_T("硬件设备检查完成"));
+	return TRUE;
+}
+
+void CProcedureController::Rollback()
+{
+	LogWarning(_T("执行异常回滚..."));
+	
+	// 关闭所有I/O开关
+	if (m_pIOController && m_pIOController->IsInitialized())
+	{
+		m_pIOController->CloseInfusionSwitch();
+		m_pIOController->CloseDisinfectSwitch();
+		m_pIOController->CloseLaserSwitch();
+		
+		LogInfo(_T("所有I/O开关已关闭"));
+	}
+	
+	// 停止机械臂
+	if (m_pRobotArm && m_pRobotArm->IsConnected())
+	{
+		m_pRobotArm->Stop();
+		LogInfo(_T("机械臂已停止"));
+	}
+	
+	LogInfo(_T("回滚完成"));
+}
+
+// ========== 日志输出 ==========
+
+void CProcedureController::LogInfo(LPCTSTR format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	
+	CString strMsg;
+	strMsg.FormatV(format, args);
+	
+	CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_INFO, strMsg);
+	
+	va_end(args);
+}
+
+void CProcedureController::LogWarning(LPCTSTR format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	
+	CString strMsg;
+	strMsg.FormatV(format, args);
+	
+	CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_WARNING, strMsg);
+	
+	va_end(args);
+}
+
+void CProcedureController::LogError(LPCTSTR format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	
+	CString strMsg;
+	strMsg.FormatV(format, args);
+	
+	CLogManager::GetInstance().AddLog(_T("流程控制"), LOG_ERROR, strMsg);
+	
+	va_end(args);
+}
+
+// ========== 状态通知 ==========
+
+void CProcedureController::NotifyStateChange(ProcedureState newState)
+{
+	EnterCriticalSection(&m_cs);
+	m_state = newState;
+	LeaveCriticalSection(&m_cs);
+	
+	if (m_stateCallback)
+	{
+		m_stateCallback(newState, m_stateCallbackUserData);
+	}
+}
+
+void CProcedureController::NotifyStepChange(int stepNumber, BOOL bSuccess)
+{
+	if (m_stepCallback)
+	{
+		m_stepCallback(stepNumber, bSuccess, m_stepCallbackUserData);
+	}
+}
+
+// ========== 线程函数 ==========
+
+UINT __stdcall CProcedureController::ThreadFunc(LPVOID pParam)
+{
+	CProcedureController* pThis = (CProcedureController*)pParam;
+	pThis->ThreadProcedure();
+	return 0;
+}
+
+void CProcedureController::ThreadProcedure()
+{
+	m_bThreadRunning = TRUE;
+	
+	// 执行7步流程
+	for (int step = 1; step <= 7; step++)
+	{
+		// 检查停止请求
+		if (m_bStopRequest)
+		{
+			LogWarning(_T("流程已停止"));
+			Rollback();
+			NotifyStateChange(PROC_STATE_STOPPED);
+			m_bThreadRunning = FALSE;
+			return;
+		}
+		
+		// 检查暂停请求
+		while (m_bPauseRequest)
+		{
+			Sleep(100);
+			
+			// 暂停期间也要检查停止请求
+			if (m_bStopRequest)
+			{
+				LogWarning(_T("流程已停止（从暂停恢复）"));
+				Rollback();
+				NotifyStateChange(PROC_STATE_STOPPED);
+				m_bThreadRunning = FALSE;
+				return;
+			}
+		}
+		
+		// 更新当前步骤
+		m_nCurrentStep = step;
+		LogInfo(_T("开始执行步骤%d：%s"), step, GetStepName(step));
+		
+		// 执行当前步骤
+		BOOL bSuccess = ExecuteStep(step);
+		
+		// 检查执行结果
+		if (!bSuccess)
+		{
+			LogError(_T("步骤%d执行失败，流程中止"), step);
+			Rollback();
+			NotifyStateChange(PROC_STATE_ERROR);
+			m_bThreadRunning = FALSE;
+			return;
+		}
+		
+		// 短暂延时
+		Sleep(200);
+	}
+	
+	// 全部成功
+	LogInfo(_T("========== 流程执行完成 =========="));
+	NotifyStateChange(PROC_STATE_COMPLETED);
+	m_bThreadRunning = FALSE;
+}
+
+// ========== 7步流程实现 ==========
+
+BOOL CProcedureController::ExecuteStep1_VisionLocate()
+{
+	LogInfo(_T("【步骤1】视觉定位（粗定位）"));
+	
+	// 1. 检查视觉系统
+	if (!m_pVision || !m_pVision->IsConnected())
+	{
+		// 未启用视觉 → 使用预设坐标或当前位置
+		LogWarning(_T("视觉系统未启用，使用当前位置"));
+		return UseManualPosition();
+	}
+	
+	// 2. 检查视觉系统是否已标定
+	if (!m_pVision->IsCalibrated())
+	{
+		LogError(_T("视觉系统未标定，无法进行坐标转换"));
+		return FALSE;
+	}
+	
+	// 3. 识别模型目标（硅胶模型）
+	float camX, camY, camZ;
+	LogInfo(_T("开始识别目标模型..."));
+	
+	if (!m_pVision->DetectModel(camX, camY, camZ))
+	{
+		LogError(_T("视觉识别失败：未检测到目标模型"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("目标识别成功 - 相机坐标: (%.2f, %.2f, %.2f) mm"), camX, camY, camZ);
+	
+	// 4. 坐标转换（相机坐标系 → 机械臂坐标系）
+	float robotX, robotY, robotZ;
+	m_pVision->TransformCoordinate(camX, camY, camZ, 
+	                               robotX, robotY, robotZ);
+	
+	LogInfo(_T("坐标转换完成 - 机械臂坐标: (%.2f, %.2f, %.2f) mm"), robotX, robotY, robotZ);
+	
+	// 5. 移动到目标上方（安全高度）
+	if (!m_pRobotArm || !m_pRobotArm->IsConnected())
+	{
+		LogError(_T("机械臂未连接"));
+		return FALSE;
+	}
+	
+	RobotArmPosition targetPos;
+	targetPos.X = robotX;
+	targetPos.Y = robotY;
+	targetPos.Z = robotZ + m_params.fSafeHeight;  // 加上安全高度
+	
+	LogInfo(_T("移动到目标上方（安全高度）: (%.2f, %.2f, %.2f) mm"), 
+		targetPos.X, targetPos.Y, targetPos.Z);
+	
+	// 以50%速度移动
+	if (!m_pRobotArm->MoveTo(targetPos, 50))
+	{
+		LogError(_T("机械臂移动失败"));
+		return FALSE;
+	}
+	
+	// 等待移动完成
+	Sleep(1000);
+	
+	LogInfo(_T("【步骤1】完成 - 已到达目标上方"));
+	return TRUE;
+}
+
+BOOL CProcedureController::ExecuteStep2_LaserCoarseAdjust()
+{
+	LogInfo(_T("【步骤2】激光粗调高度"));
+	
+	// 1. 打开激光测距仪
+	if (!m_pIOController || !m_pIOController->IsInitialized())
+	{
+		LogError(_T("I/O控制器未初始化"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("打开激光测距仪..."));
+	if (!m_pIOController->OpenLaserSwitch())
+	{
+		LogError(_T("打开激光测距仪失败"));
+		return FALSE;
+	}
+	
+	Sleep(500);  // 等待激光稳定
+	
+	// 2. 读取当前距离
+	float fCurrentDist = GetLaserDistance();
+	if (fCurrentDist < 0)
+	{
+		LogError(_T("无法读取激光距离：激光测距仪读取失败，请检查硬件连接"));
+		m_pIOController->CloseLaserSwitch();
+		return FALSE;
+	}
+	
+	LogInfo(_T("当前激光距离: %.2f mm"), fCurrentDist);
+	
+	// 3. 循环调整，直到达到目标范围
+	const float TARGET = m_params.fTargetHeight;        // 100mm
+	const float TOLERANCE = m_params.fCoarseTolerance;  // ±2mm
+	
+	int nMaxTries = 20;
+	int nTryCount = 0;
+	int nReadFailCount = 0;  // 读取失败计数
+	
+	while (nTryCount++ < nMaxTries)
+	{
+		// 检查停止请求
+		if (m_bStopRequest)
+		{
+			LogWarning(_T("收到停止请求"));
+			m_pIOController->CloseLaserSwitch();
+			return FALSE;
+		}
+		
+		fCurrentDist = GetLaserDistance();
+		
+		// 检查读取是否成功
+		if (fCurrentDist < 0)
+		{
+			LogError(_T("第%d次调整 - 读取激光距离失败"), nTryCount);
+			
+			// 连续失败3次则中止
+			if (++nReadFailCount >= 3)
+			{
+				LogError(_T("连续3次读取失败，粗调中止"));
+				m_pIOController->CloseLaserSwitch();
+				return FALSE;
+			}
+			
+			Sleep(200);  // 等待后重试
+			continue;
+		}
+		
+		// 读取成功，重置失败计数
+		nReadFailCount = 0;
+		
+		float fError = fCurrentDist - TARGET;
+		
+		LogInfo(_T("第%d次调整 - 距离: %.2f mm, 误差: %.2f mm"), 
+			nTryCount, fCurrentDist, fError);
+		
+		// 达到目标范围
+		if (fabs(fError) <= TOLERANCE)
+		{
+			LogInfo(_T("粗调完成！距离: %.2f mm (目标: %.2f ±%.2f mm)"), 
+				fCurrentDist, TARGET, TOLERANCE);
+			return TRUE;  // 保持激光打开，供后续步骤使用
+		}
+		
+		// 计算移动量（Z轴）
+		float fMoveZ = -fError * 0.8f;  // 80%补偿，避免过调
+		
+		// 限制单次移动量（安全考虑）
+		if (fabs(fMoveZ) > 5.0f)
+		{
+			fMoveZ = (fMoveZ > 0) ? 5.0f : -5.0f;
+		}
+		
+		// 移动机械臂
+		RobotArmPosition pos = m_pRobotArm->GetCurrentPosition();
+		pos.Z += fMoveZ;
+		
+		if (!m_pRobotArm->MoveTo(pos, 30))  // 30%慢速移动
+		{
+			LogError(_T("机械臂移动失败"));
+			m_pIOController->CloseLaserSwitch();
+			return FALSE;
+		}
+		
+		Sleep(500);  // 等待稳定
+	}
+	
+	LogError(_T("粗调失败：超过最大尝试次数(%d次)"), nMaxTries);
+	m_pIOController->CloseLaserSwitch();
+	return FALSE;
+}
+
+BOOL CProcedureController::ExecuteStep3_DetectPuncturePoint()
+{
+	LogInfo(_T("开始步骤3：识别穿刺点"));
+	
+	// 1. 关闭激光测距仪，避免干扰视觉识别
+	if (m_pIOController && m_pIOController->IsInitialized())
+	{
+		LogInfo(_T("关闭激光测距仪..."));
+		m_pIOController->CloseLaserSwitch();
+		Sleep(200);
+	}
+	
+	// 2. 视觉识别穿刺点
+	if (!m_pVision || !m_pVision->IsConnected())
+	{
+		// 未启用视觉 → 使用当前位置作为穿刺点
+		LogWarning(_T("视觉系统未启用，使用当前位置作为穿刺点"));
+		
+		if (m_pRobotArm && m_pRobotArm->IsConnected())
+		{
+			m_puncturePoint = m_pRobotArm->GetCurrentPosition();
+			LogInfo(_T("穿刺点设为当前位置: (%.2f, %.2f, %.2f, Theta=%.2f°)"), 
+				m_puncturePoint.X, m_puncturePoint.Y, m_puncturePoint.Z, m_puncturePoint.Theta);
+			return TRUE;
+		}
+		else
+		{
+			LogError(_T("无法获取当前位置"));
+			return FALSE;
+		}
+	}
+	
+	// 3. 识别穿刺点
+	float camX, camY, camZ;
+	LogInfo(_T("开始识别穿刺点..."));
+	
+	if (!m_pVision->DetectPuncturePoint(camX, camY, camZ))
+	{
+		LogError(_T("识别穿刺点失败"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("穿刺点识别成功 - 相机坐标: (%.2f, %.2f, %.2f) mm"), camX, camY, camZ);
+	
+	// 4. 坐标转换并记录
+	float robotX, robotY, robotZ;
+	m_pVision->TransformCoordinate(camX, camY, camZ, 
+	                               robotX, robotY, robotZ);
+	
+	m_puncturePoint.X = robotX;
+	m_puncturePoint.Y = robotY;
+	m_puncturePoint.Z = robotZ;
+	
+	// 5. ★ 计算目标姿态角度（针对穿刺点）
+	// 根据视觉识别结果计算最佳穿刺角度
+	// 视觉系统会提供角度信息，如不支持则返回默认0度
+	m_puncturePoint.Theta = m_pVision->GetPunctureAngle(camX, camY, camZ);
+	
+	if (m_puncturePoint.Theta != 0.0f)
+	{
+		LogInfo(_T("视觉系统提供穿刺角度: %.2f°"), m_puncturePoint.Theta);
+	}
+	else
+	{
+		LogInfo(_T("使用默认垂直穿刺角度: 0.0°"));
+	}
+	
+	LogInfo(_T("穿刺点坐标: (%.2f, %.2f, %.2f) mm, 姿态角度: %.2f°"), 
+		robotX, robotY, robotZ, m_puncturePoint.Theta);
+	
+	// 6. ★ 新增：立即调整机械臂姿态到穿刺角度（旋转）
+	if (!m_pRobotArm || !m_pRobotArm->IsConnected())
+	{
+		LogError(_T("机械臂未连接"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("调整机械臂姿态到穿刺角度..."));
+	
+	// 获取当前位置
+	RobotArmPosition currentPos = m_pRobotArm->GetCurrentPosition();
+	
+	// 只改变Theta（旋转），保持X/Y/Z不变（避免碰撞）
+	RobotArmPosition thetaPos = currentPos;
+	thetaPos.Theta = m_puncturePoint.Theta;
+	
+	if (!m_pRobotArm->MoveTo(thetaPos, 20))  // 20%较慢速度调整姿态
+	{
+		LogError(_T("姿态调整失败"));
+		return FALSE;
+	}
+	
+	// 等待姿态调整稳定
+	Sleep(500);
+	
+	LogInfo(_T("步骤3完成 - 姿态已调整到穿刺角度: %.2f°"), m_puncturePoint.Theta);
+	
+	return TRUE;
+}
+
+BOOL CProcedureController::ExecuteStep4_PreciseAlignment()
+{
+	LogInfo(_T("开始步骤4：精准对位"));
+	
+	// 1. 打开激光测距仪
+	if (!m_pIOController || !m_pIOController->IsInitialized())
+	{
+		LogError(_T("I/O控制器未初始化"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("打开激光测距仪..."));
+	if (!m_pIOController->OpenLaserSwitch())
+	{
+		LogError(_T("打开激光测距仪失败"));
+		return FALSE;
+	}
+	
+	Sleep(500);  // 等待激光稳定
+	
+	// 2. ★ 移动到穿刺点上方（安全高度 + 保持姿态）
+	// 注意：姿态已经在步骤3中调整好了，这里直接移动到穿刺点上方
+	if (!m_pRobotArm || !m_pRobotArm->IsConnected())
+	{
+		LogError(_T("机械臂未连接"));
+		m_pIOController->CloseLaserSwitch();
+		return FALSE;
+	}
+	
+	RobotArmPosition targetPos = m_puncturePoint;
+	targetPos.Z += m_params.fSafeHeight;  // 加上安全高度
+	// targetPos.Theta 已经在步骤3中设置好了
+	
+	LogInfo(_T("步骤4.1 - 移动到穿刺点上方: (%.2f, %.2f, %.2f) mm, 姿态: %.2f°"), 
+		targetPos.X, targetPos.Y, targetPos.Z, targetPos.Theta);
+	
+	if (!m_pRobotArm->MoveTo(targetPos, 30))
+	{
+		LogError(_T("机械臂移动失败"));
+		m_pIOController->CloseLaserSwitch();
+		return FALSE;
+	}
+	
+	Sleep(500);
+	
+	// 3. 精确调整高度（±0.2mm），使激光点与穿刺点重合
+	const float FINE_TOLERANCE = m_params.fFineTolerance;  // 0.2mm
+	const float TARGET = m_params.fTargetHeight;
+	
+	int nMaxTries = m_params.nMaxAdjustCount;  // 默认50次
+	int nTryCount = 0;
+	int nReadFailCount = 0;  // 读取失败计数
+	
+	LogInfo(_T("步骤4.2 - 开始精准对位（目标精度: ±%.2f mm）..."), FINE_TOLERANCE);
+	LogInfo(_T("调整激光点与穿刺点重合..."));
+	
+	while (nTryCount++ < nMaxTries)
+	{
+		// 检查停止请求
+		if (m_bStopRequest)
+		{
+			LogWarning(_T("收到停止请求"));
+			m_pIOController->CloseLaserSwitch();
+			return FALSE;
+		}
+		
+		
+		float fCurrentDist = GetLaserDistance();
+		
+		// 检查读取是否成功
+		if (fCurrentDist < 0)
+		{
+			LogError(_T("第%d次微调 - 读取激光距离失败"), nTryCount);
+			
+			// 连续失败5次则中止
+			if (++nReadFailCount >= 5)
+			{
+				LogError(_T("连续5次读取失败，精准对位中止"));
+				m_pIOController->CloseLaserSwitch();
+				return FALSE;
+			}
+			
+			Sleep(200);
+			continue;
+		}
+		
+		// 读取成功，重置失败计数
+		nReadFailCount = 0;
+		
+		float fError = fCurrentDist - TARGET;
+		
+		if (nTryCount % 5 == 0)  // 每5次输出一次日志
+		{
+			LogInfo(_T("第%d次微调 - 距离: %.3f mm, 误差: %.3f mm"), 
+				nTryCount, fCurrentDist, fError);
+		}
+		
+		// 达到精准范围（激光点与穿刺点重合）
+		if (fabs(fError) <= FINE_TOLERANCE)
+		{
+			LogInfo(_T("精准对位完成！"));
+			LogInfo(_T("  最终距离: %.3f mm (目标: %.2f ±%.2f mm)"), 
+				fCurrentDist, TARGET, FINE_TOLERANCE);
+			LogInfo(_T("  激光点与穿刺点重合"));
+			m_pIOController->CloseLaserSwitch();
+			return TRUE;
+		}
+		
+		// 微调Z轴（小幅度）
+		float fMoveZ = -fError * 0.5f;  // 50%修正
+		
+		// 确保最小步长
+		if (fabs(fMoveZ) < 0.1f)
+		{
+			fMoveZ = (fError > 0) ? -0.1f : 0.1f;
+		}
+		
+		// 限制最大步长
+		if (fabs(fMoveZ) > 1.0f)
+		{
+			fMoveZ = (fMoveZ > 0) ? 1.0f : -1.0f;
+		}
+		
+		// 移动机械臂（保持姿态不变）
+		RobotArmPosition pos = m_pRobotArm->GetCurrentPosition();
+		pos.Z += fMoveZ;
+		// pos.Theta 保持不变！
+		
+		if (!m_pRobotArm->MoveTo(pos, 10))  // 10%极慢速移动
+		{
+			LogError(_T("机械臂微调失败"));
+			m_pIOController->CloseLaserSwitch();
+			return FALSE;
+		}
+		
+		Sleep(300);  // 等待稳定
+	}
+	
+	LogError(_T("精准对位失败，超过最大调整次数(%d次)"), nMaxTries);
+	m_pIOController->CloseLaserSwitch();
+	return FALSE;
+}
+
+BOOL CProcedureController::ExecuteStep5_Disinfection()
+{
+	LogInfo(_T("【步骤5】消毒准备"));
+	
+	// 1. 确保激光测距仪已关闭
+	if (m_pIOController && m_pIOController->IsInitialized())
+	{
+		m_pIOController->CloseLaserSwitch();
+	}
+	
+	// 2. 打开消毒液阀门
+	if (!m_pIOController || !m_pIOController->IsInitialized())
+	{
+		LogError(_T("I/O控制器未初始化"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("打开消毒液阀门..."));
+	if (!m_pIOController->OpenDisinfectSwitch())
+	{
+		LogError(_T("打开消毒液阀门失败"));
+		return FALSE;
+	}
+	
+	// 3. 等待指定时间
+	float fWaitTime = m_params.fDisinfectTime;  // 默认2秒
+	LogInfo(_T("消毒中，等待 %.1f 秒..."), fWaitTime);
+	
+	// 分段等待，以便响应停止请求
+	int nWaitMs = (int)(fWaitTime * 1000);
+	int nStepMs = 100;  // 每100ms检查一次
+	
+	for (int i = 0; i < nWaitMs; i += nStepMs)
+	{
+		if (m_bStopRequest)
+		{
+			LogWarning(_T("收到停止请求"));
+			m_pIOController->CloseDisinfectSwitch();
+			return FALSE;
+		}
+		
+		Sleep(nStepMs);
+	}
+	
+	// 4. 关闭消毒液阀门
+	if (!m_pIOController->CloseDisinfectSwitch())
+	{
+		LogError(_T("关闭消毒液阀门失败"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("【步骤5】完成 - 消毒完成"));
+	return TRUE;
+}
+
+BOOL CProcedureController::ExecuteStep6_Puncture()
+{
+	LogInfo(_T("开始步骤6：穿刺执行"));
+	
+	// 1. 检查232串口
+	if (!m_pSerial232 || !m_pSerial232->IsOpen())
+	{
+		LogError(_T("232串口未打开"));
+		return FALSE;
+	}
+	
+	// 2. 获取穿刺深度（单位：mm或单位，取决于接口的配置）
+	float fDepth = m_params.fPunctureDepth;  // 例如：1000单位（或者 50个mm）
+	
+	// 3. 构造穿刺指令格式：MR-深度
+	// 例如：深度为1000，发送 "MR-1000\r\n"
+	// MR 表示向前运动，-1000 表示前进1000个单位
+	CString strCmd;
+	strCmd.Format(_T("MR-%.0f\r\n"), fDepth);
+	
+	CStringA strCmdA(strCmd);
+	
+	LogInfo(_T("发送穿刺指令：MR-%.0f (深度 %.0f 单位)"), fDepth, fDepth);
+	
+	// 4. 发送穿刺指令
+	if (!m_pSerial232->SendData(strCmdA.GetString(), strCmdA.GetLength(), FALSE))
+	{
+		LogError(_T("发送穿刺指令失败"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("穿刺执行中，等待完成..."));
+	
+	// 5. ★ 动态计算超时时间
+	// 假设每100单位需要0.5秒，基础超时1秒
+	int nTimeout = (int)(fDepth / 100.0f * 500.0f) + 1000;
+	
+	// 最小超时2秒，最大超时30秒
+	if (nTimeout < 2000) nTimeout = 2000;
+	if (nTimeout > 30000) nTimeout = 30000;
+	
+	LogInfo(_T("穿刺超时设置: %d 毫秒 (深度: %.0f)"), nTimeout, fDepth);
+	
+	BOOL bCompleted = WaitForMotorComplete(nTimeout);
+
+	// WaitForMotorComplete() 当前策略为“等待指定时间”，仅在收到停止请求时返回FALSE
+	if (!bCompleted)
+	{
+		LogWarning(_T("穿刺步骤被中止（收到停止请求）"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("步骤6完成 - 穿刺成功"));
+	return TRUE;
+}
+
+BOOL CProcedureController::ExecuteStep7_Infusion()
+{
+	LogInfo(_T("【步骤7】输液启动"));
+	
+	// 1. 打开输液阀门
+	if (!m_pIOController || !m_pIOController->IsInitialized())
+	{
+		LogError(_T("I/O控制器未初始化"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("打开输液阀门..."));
+	if (!m_pIOController->OpenInfusionSwitch())
+	{
+		LogError(_T("打开输液阀门失败"));
+		return FALSE;
+	}
+	
+	LogInfo(_T("输液阀门已打开"));
+	
+	// 2. 持续监控输液传感器（PIN 2）
+	// 这是一个持久状态，由定时器监控，此处仅启动
+	// 在实际应用中，可以通过定时器定期检查传感器状态
+	
+	// 3. 流程结束提示
+	LogInfo(_T("========== 流程执行完成 =========="));
+	LogInfo(_T("注意：输液阀门保持打开状态，请监控输液传感器"));
+	
+	return TRUE;
+}

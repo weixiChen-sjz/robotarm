@@ -1,0 +1,678 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "E:\\mywork\\surwindsurf\\MFCApplication1\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MFCApplication1.rc||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\MFCApplication1.rc||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|E:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\memory||{3B902123-F8A7-4915-9F01-361F908088D0}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MFCApplication1Dlg.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\MFCApplication1Dlg.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|E:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\mutex||{3B902123-F8A7-4915-9F01-361F908088D0}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\RobotArmController.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\RobotArmController.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B84E8E66-B661-47C5-8DED-8BD5EF5A81F7}|ConsoleApplication1\\ConsoleApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\ConsoleApplication1\\ConsoleApplication1.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{B84E8E66-B661-47C5-8DED-8BD5EF5A81F7}|ConsoleApplication1\\ConsoleApplication1.vcxproj|solutionrelative:ConsoleApplication1\\ConsoleApplication1.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureController.h||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\ProcedureController.h||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IOControllerProxy.h||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\IOControllerProxy.h||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IIOController.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\IIOController.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureDlg.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\ProcedureDlg.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureController.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\ProcedureController.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\IOBridge-32bit-IO-64bit-Robot.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\IOBridge-32bit-IO-64bit-Robot.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IOControllerProxy.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\IOControllerProxy.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|E:\\mywork\\surwindsurf\\MFCApplication1\\IOBridge\\IOBridgeMain.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:IOBridge\\IOBridgeMain.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|E:\\mywork\\surwindsurf\\MFCApplication1\\IOBridge\\IOBridgeProtocol.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:IOBridge\\IOBridgeProtocol.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9636\u6BB5-\u9879\u76EE\u8FD0\u884C\u6D41\u7A0B\u56FE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9636\u6BB5-\u9879\u76EE\u8FD0\u884C\u6D41\u7A0B\u56FE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u9879\u76EE\u601D\u7EF4\u5BFC\u56FE\u6846\u67B6.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\\u9879\u76EE\u601D\u7EF4\u5BFC\u56FE\u6846\u67B6.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\7\u6B65\u6D41\u7A0B\u6700\u7EC8\u68C0\u67E5\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\7\u6B65\u6D41\u7A0B\u6700\u7EC8\u68C0\u67E5\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureParams.h||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\ProcedureParams.h||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\LogManager.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\LogManager.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\LogManager.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\LogManager.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u67B6\u6784\u8BF4\u660E.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\\u67B6\u6784\u8BF4\u660E.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureDlg.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\ProcedureDlg.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6FC0\u5149\u6D4B\u8DDD\u8303\u56F4\u95EE\u9898\u4FEE\u6B63\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\\u6FC0\u5149\u6D4B\u8DDD\u8303\u56F4\u95EE\u9898\u4FEE\u6B63\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IVisionSystem.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\IVisionSystem.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IRobotArmController.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\IRobotArmController.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u5BB9\u9519\u5904\u7406\u589E\u5F3A\u4FEE\u6539\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\\u5BB9\u9519\u5904\u7406\u589E\u5F3A\u4FEE\u6539\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u76EE\u6807\u9AD8\u5EA6\u53C2\u6570\u4FEE\u6539\u5B8C\u6210\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\\u76EE\u6807\u9AD8\u5EA6\u53C2\u6570\u4FEE\u6539\u5B8C\u6210\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\RealSense\u76EE\u6807\u9AD8\u5EA6\u52A8\u6001\u83B7\u53D6\u65B9\u6848.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\RealSense\u76EE\u6807\u9AD8\u5EA6\u52A8\u6001\u83B7\u53D6\u65B9\u6848.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\SerialPort.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\SerialPort.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u5168\u90E8\u4FEE\u6539\u5B8C\u6574\u540C\u6B65\u68C0\u67E5\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\\u5168\u90E8\u4FEE\u6539\u5B8C\u6574\u540C\u6B65\u68C0\u67E5\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6B65\u9AA43\u59FF\u6001\u8C03\u6574\u4FEE\u6539\u540C\u6B65\u68C0\u67E5.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\\u6B65\u9AA43\u59FF\u6001\u8C03\u6574\u4FEE\u6539\u540C\u6B65\u68C0\u67E5.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6700\u7EC8\u4FEE\u590D\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\\u6700\u7EC8\u4FEE\u590D\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MFCApplication1Dlg.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\MFCApplication1Dlg.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MockVisionSystem.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\MockVisionSystem.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MockVisionSystem.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\MockVisionSystem.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u5168\u9762\u95EE\u9898\u4FEE\u590D\u6E05\u5355.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\\u5168\u9762\u95EE\u9898\u4FEE\u590D\u6E05\u5355.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9762\u677F\u91CD\u590D\u6253\u5F00\u95EE\u9898\u4FEE\u590D\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9762\u677F\u91CD\u590D\u6253\u5F00\u95EE\u9898\u4FEE\u590D\u62A5\u544A.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\RobotArmController.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\RobotArmController.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\Validate\u51FD\u6570\u6D41\u7A0B\u56FE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{506CCC2D-492C-36B3-31A1-B53C89205E39}|MFCApplication1\\MFCApplication1.vcxproj|solutionrelative:MFCApplication1\\docs\\Validate\u51FD\u6570\u6D41\u7A0B\u56FE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 5,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "LogManager.cpp",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\LogManager.cpp",
+              "RelativeDocumentMoniker": "MFCApplication1\\LogManager.cpp",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\LogManager.cpp",
+              "RelativeToolTip": "MFCApplication1\\LogManager.cpp",
+              "ViewState": "AgIAAGUAAAAAAAAAAAAcwBQBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-01-22T09:26:38.792Z",
+              "IsPinned": true
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{2d7728c2-de0a-45b5-99aa-89b609dfde73}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MFCApplication1.rc",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MFCApplication1.rc",
+              "RelativeDocumentMoniker": "MFCApplication1\\MFCApplication1.rc",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MFCApplication1.rc",
+              "RelativeToolTip": "MFCApplication1\\MFCApplication1.rc",
+              "ViewState": "AgIAAN8AAAAAAAAAAAAYwOsAAAA9AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001005|",
+              "WhenOpened": "2026-01-23T06:02:20.732Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "memory",
+              "DocumentMoniker": "E:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\memory",
+              "RelativeDocumentMoniker": "..\\..\\..\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\memory",
+              "ToolTip": "E:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\memory",
+              "RelativeToolTip": "..\\..\\..\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\memory",
+              "ViewState": "AgIAAD0OAAAAAAAAAAAAwEoOAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-01-22T09:33:10.837Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "mutex",
+              "DocumentMoniker": "E:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\mutex",
+              "RelativeDocumentMoniker": "..\\..\\..\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\mutex",
+              "ToolTip": "E:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\mutex",
+              "RelativeToolTip": "..\\..\\..\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\mutex",
+              "ViewState": "AgIAABkAAAAAAAAAAAAAwDUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-01-21T06:56:38.218Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "IOBridgeMain.cpp",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\IOBridge\\IOBridgeMain.cpp",
+              "RelativeDocumentMoniker": "IOBridge\\IOBridgeMain.cpp",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\IOBridge\\IOBridgeMain.cpp",
+              "RelativeToolTip": "IOBridge\\IOBridgeMain.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAJgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-01-20T08:02:49.246Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "IOBridgeProtocol.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\IOBridge\\IOBridgeProtocol.h",
+              "RelativeDocumentMoniker": "IOBridge\\IOBridgeProtocol.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\IOBridge\\IOBridgeProtocol.h",
+              "RelativeToolTip": "IOBridge\\IOBridgeProtocol.h",
+              "ViewState": "AgIAACcAAAAAAAAAAAAAADsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-20T07:59:38.094Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "MFCApplication1Dlg.cpp",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MFCApplication1Dlg.cpp",
+              "RelativeDocumentMoniker": "MFCApplication1\\MFCApplication1Dlg.cpp",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MFCApplication1Dlg.cpp",
+              "RelativeToolTip": "MFCApplication1\\MFCApplication1Dlg.cpp",
+              "ViewState": "AgIAAFAGAAAAAAAAAAAIwF4GAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-01-22T09:26:38.871Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "RobotArmController.cpp",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\RobotArmController.cpp",
+              "RelativeDocumentMoniker": "MFCApplication1\\RobotArmController.cpp",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\RobotArmController.cpp",
+              "RelativeToolTip": "MFCApplication1\\RobotArmController.cpp",
+              "ViewState": "AgIAALcAAAAAAAAAAABBwAUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-01-22T09:26:39.276Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ConsoleApplication1.cpp",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\ConsoleApplication1\\ConsoleApplication1.cpp",
+              "RelativeDocumentMoniker": "ConsoleApplication1\\ConsoleApplication1.cpp",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\ConsoleApplication1\\ConsoleApplication1.cpp",
+              "RelativeToolTip": "ConsoleApplication1\\ConsoleApplication1.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-01-20T08:24:29.837Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "IIOController.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IIOController.h",
+              "RelativeDocumentMoniker": "MFCApplication1\\IIOController.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IIOController.h",
+              "RelativeToolTip": "MFCApplication1\\IIOController.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAuAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-22T09:26:39.278Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "IOBridge-32bit-IO-64bit-Robot.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\IOBridge-32bit-IO-64bit-Robot.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\IOBridge-32bit-IO-64bit-Robot.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\IOBridge-32bit-IO-64bit-Robot.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\IOBridge-32bit-IO-64bit-Robot.md",
+              "ViewState": "AgIAABUAAAAAAAAAAAAAACIAAAA5AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.279Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "IOControllerProxy.cpp",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IOControllerProxy.cpp",
+              "RelativeDocumentMoniker": "MFCApplication1\\IOControllerProxy.cpp",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IOControllerProxy.cpp",
+              "RelativeToolTip": "MFCApplication1\\IOControllerProxy.cpp",
+              "ViewState": "AgIAAMcAAAAAAAAAAAAAAAEBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-01-22T09:26:39.279Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "IOControllerProxy.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IOControllerProxy.h",
+              "RelativeDocumentMoniker": "MFCApplication1\\IOControllerProxy.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IOControllerProxy.h",
+              "RelativeToolTip": "MFCApplication1\\IOControllerProxy.h",
+              "ViewState": "AgIAABoAAAAAAAAAAAAAAB8AAAAGAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-22T09:26:39.28Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "\u6D41\u7A0B\u63A7\u5236\u9636\u6BB5-\u9879\u76EE\u8FD0\u884C\u6D41\u7A0B\u56FE.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9636\u6BB5-\u9879\u76EE\u8FD0\u884C\u6D41\u7A0B\u56FE.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9636\u6BB5-\u9879\u76EE\u8FD0\u884C\u6D41\u7A0B\u56FE.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9636\u6BB5-\u9879\u76EE\u8FD0\u884C\u6D41\u7A0B\u56FE.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9636\u6BB5-\u9879\u76EE\u8FD0\u884C\u6D41\u7A0B\u56FE.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.281Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 39,
+              "Title": "Validate\u51FD\u6570\u6D41\u7A0B\u56FE.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\Validate\u51FD\u6570\u6D41\u7A0B\u56FE.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\Validate\u51FD\u6570\u6D41\u7A0B\u56FE.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\Validate\u51FD\u6570\u6D41\u7A0B\u56FE.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\Validate\u51FD\u6570\u6D41\u7A0B\u56FE.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.283Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "\u9879\u76EE\u601D\u7EF4\u5BFC\u56FE\u6846\u67B6.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u9879\u76EE\u601D\u7EF4\u5BFC\u56FE\u6846\u67B6.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\\u9879\u76EE\u601D\u7EF4\u5BFC\u56FE\u6846\u67B6.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u9879\u76EE\u601D\u7EF4\u5BFC\u56FE\u6846\u67B6.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\\u9879\u76EE\u601D\u7EF4\u5BFC\u56FE\u6846\u67B6.md",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAAFgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.284Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "ProcedureDlg.cpp",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureDlg.cpp",
+              "RelativeDocumentMoniker": "MFCApplication1\\ProcedureDlg.cpp",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureDlg.cpp",
+              "RelativeToolTip": "MFCApplication1\\ProcedureDlg.cpp",
+              "ViewState": "AgIAACoBAAAAAAAAAAAhwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-01-22T09:26:39.285Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "\u67B6\u6784\u8BF4\u660E.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u67B6\u6784\u8BF4\u660E.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\\u67B6\u6784\u8BF4\u660E.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u67B6\u6784\u8BF4\u660E.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\\u67B6\u6784\u8BF4\u660E.md",
+              "ViewState": "AgIAAHYAAAAAAAAAAABBwA4BAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.286Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 38,
+              "Title": "RobotArmController.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\RobotArmController.h",
+              "RelativeDocumentMoniker": "MFCApplication1\\RobotArmController.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\RobotArmController.h",
+              "RelativeToolTip": "MFCApplication1\\RobotArmController.h",
+              "ViewState": "AgIAAAMAAAAAAAAAAABIwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-22T09:26:39.286Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "IRobotArmController.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IRobotArmController.h",
+              "RelativeDocumentMoniker": "MFCApplication1\\IRobotArmController.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IRobotArmController.h",
+              "RelativeToolTip": "MFCApplication1\\IRobotArmController.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAC0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-22T09:26:39.287Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "ProcedureController.cpp",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureController.cpp",
+              "RelativeDocumentMoniker": "MFCApplication1\\ProcedureController.cpp",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureController.cpp",
+              "RelativeToolTip": "MFCApplication1\\ProcedureController.cpp",
+              "ViewState": "AgIAAHkAAAAAAAAAAAAMwOMDAAA9AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-01-22T09:26:39.288Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "ProcedureParams.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureParams.h",
+              "RelativeDocumentMoniker": "MFCApplication1\\ProcedureParams.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureParams.h",
+              "RelativeToolTip": "MFCApplication1\\ProcedureParams.h",
+              "ViewState": "AgIAABgAAAAAAAAAAAAAACoAAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-22T09:26:39.289Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": "\u76EE\u6807\u9AD8\u5EA6\u53C2\u6570\u4FEE\u6539\u5B8C\u6210\u62A5\u544A.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u76EE\u6807\u9AD8\u5EA6\u53C2\u6570\u4FEE\u6539\u5B8C\u6210\u62A5\u544A.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\\u76EE\u6807\u9AD8\u5EA6\u53C2\u6570\u4FEE\u6539\u5B8C\u6210\u62A5\u544A.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u76EE\u6807\u9AD8\u5EA6\u53C2\u6570\u4FEE\u6539\u5B8C\u6210\u62A5\u544A.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\\u76EE\u6807\u9AD8\u5EA6\u53C2\u6570\u4FEE\u6539\u5B8C\u6210\u62A5\u544A.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAIgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.29Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 28,
+              "Title": "RealSense\u76EE\u6807\u9AD8\u5EA6\u52A8\u6001\u83B7\u53D6\u65B9\u6848.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\RealSense\u76EE\u6807\u9AD8\u5EA6\u52A8\u6001\u83B7\u53D6\u65B9\u6848.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\RealSense\u76EE\u6807\u9AD8\u5EA6\u52A8\u6001\u83B7\u53D6\u65B9\u6848.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\RealSense\u76EE\u6807\u9AD8\u5EA6\u52A8\u6001\u83B7\u53D6\u65B9\u6848.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\RealSense\u76EE\u6807\u9AD8\u5EA6\u52A8\u6001\u83B7\u53D6\u65B9\u6848.md",
+              "ViewState": "AgIAAEUAAAAAAAAAAAAAAG8BAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.291Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "ProcedureController.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureController.h",
+              "RelativeDocumentMoniker": "MFCApplication1\\ProcedureController.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureController.h",
+              "RelativeToolTip": "MFCApplication1\\ProcedureController.h",
+              "ViewState": "AgIAAJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-22T09:26:39.292Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "\u5BB9\u9519\u5904\u7406\u589E\u5F3A\u4FEE\u6539\u62A5\u544A.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u5BB9\u9519\u5904\u7406\u589E\u5F3A\u4FEE\u6539\u62A5\u544A.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\\u5BB9\u9519\u5904\u7406\u589E\u5F3A\u4FEE\u6539\u62A5\u544A.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u5BB9\u9519\u5904\u7406\u589E\u5F3A\u4FEE\u6539\u62A5\u544A.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\\u5BB9\u9519\u5904\u7406\u589E\u5F3A\u4FEE\u6539\u62A5\u544A.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAPAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.293Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "\u6FC0\u5149\u6D4B\u8DDD\u8303\u56F4\u95EE\u9898\u4FEE\u6B63\u62A5\u544A.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6FC0\u5149\u6D4B\u8DDD\u8303\u56F4\u95EE\u9898\u4FEE\u6B63\u62A5\u544A.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\\u6FC0\u5149\u6D4B\u8DDD\u8303\u56F4\u95EE\u9898\u4FEE\u6B63\u62A5\u544A.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6FC0\u5149\u6D4B\u8DDD\u8303\u56F4\u95EE\u9898\u4FEE\u6B63\u62A5\u544A.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\\u6FC0\u5149\u6D4B\u8DDD\u8303\u56F4\u95EE\u9898\u4FEE\u6B63\u62A5\u544A.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAOYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.293Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 29,
+              "Title": "SerialPort.cpp",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\SerialPort.cpp",
+              "RelativeDocumentMoniker": "MFCApplication1\\SerialPort.cpp",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\SerialPort.cpp",
+              "RelativeToolTip": "MFCApplication1\\SerialPort.cpp",
+              "ViewState": "AgIAACsBAAAAAAAAAADwvz4BAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-01-22T09:26:39.294Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 30,
+              "Title": "\u5168\u90E8\u4FEE\u6539\u5B8C\u6574\u540C\u6B65\u68C0\u67E5\u62A5\u544A.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u5168\u90E8\u4FEE\u6539\u5B8C\u6574\u540C\u6B65\u68C0\u67E5\u62A5\u544A.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\\u5168\u90E8\u4FEE\u6539\u5B8C\u6574\u540C\u6B65\u68C0\u67E5\u62A5\u544A.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u5168\u90E8\u4FEE\u6539\u5B8C\u6574\u540C\u6B65\u68C0\u67E5\u62A5\u544A.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\\u5168\u90E8\u4FEE\u6539\u5B8C\u6574\u540C\u6B65\u68C0\u67E5\u62A5\u544A.md",
+              "ViewState": "AgIAAGQDAAAAAAAAAAAWwHUDAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.295Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 37,
+              "Title": "\u6D41\u7A0B\u63A7\u5236\u9762\u677F\u91CD\u590D\u6253\u5F00\u95EE\u9898\u4FEE\u590D\u62A5\u544A.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9762\u677F\u91CD\u590D\u6253\u5F00\u95EE\u9898\u4FEE\u590D\u62A5\u544A.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9762\u677F\u91CD\u590D\u6253\u5F00\u95EE\u9898\u4FEE\u590D\u62A5\u544A.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9762\u677F\u91CD\u590D\u6253\u5F00\u95EE\u9898\u4FEE\u590D\u62A5\u544A.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\\u6D41\u7A0B\u63A7\u5236\u9762\u677F\u91CD\u590D\u6253\u5F00\u95EE\u9898\u4FEE\u590D\u62A5\u544A.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAF0BAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.296Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 31,
+              "Title": "\u6B65\u9AA43\u59FF\u6001\u8C03\u6574\u4FEE\u6539\u540C\u6B65\u68C0\u67E5.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6B65\u9AA43\u59FF\u6001\u8C03\u6574\u4FEE\u6539\u540C\u6B65\u68C0\u67E5.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\\u6B65\u9AA43\u59FF\u6001\u8C03\u6574\u4FEE\u6539\u540C\u6B65\u68C0\u67E5.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6B65\u9AA43\u59FF\u6001\u8C03\u6574\u4FEE\u6539\u540C\u6B65\u68C0\u67E5.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\\u6B65\u9AA43\u59FF\u6001\u8C03\u6574\u4FEE\u6539\u540C\u6B65\u68C0\u67E5.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.297Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 36,
+              "Title": "\u5168\u9762\u95EE\u9898\u4FEE\u590D\u6E05\u5355.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u5168\u9762\u95EE\u9898\u4FEE\u590D\u6E05\u5355.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\\u5168\u9762\u95EE\u9898\u4FEE\u590D\u6E05\u5355.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u5168\u9762\u95EE\u9898\u4FEE\u590D\u6E05\u5355.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\\u5168\u9762\u95EE\u9898\u4FEE\u590D\u6E05\u5355.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.298Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "7\u6B65\u6D41\u7A0B\u6700\u7EC8\u68C0\u67E5\u62A5\u544A.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\7\u6B65\u6D41\u7A0B\u6700\u7EC8\u68C0\u67E5\u62A5\u544A.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\7\u6B65\u6D41\u7A0B\u6700\u7EC8\u68C0\u67E5\u62A5\u544A.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\7\u6B65\u6D41\u7A0B\u6700\u7EC8\u68C0\u67E5\u62A5\u544A.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\7\u6B65\u6D41\u7A0B\u6700\u7EC8\u68C0\u67E5\u62A5\u544A.md",
+              "ViewState": "AgIAAOIAAAAAAAAAAAAnwOcAAAADAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.298Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 32,
+              "Title": "\u6700\u7EC8\u4FEE\u590D\u62A5\u544A.md",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6700\u7EC8\u4FEE\u590D\u62A5\u544A.md",
+              "RelativeDocumentMoniker": "MFCApplication1\\docs\\\u6700\u7EC8\u4FEE\u590D\u62A5\u544A.md",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\docs\\\u6700\u7EC8\u4FEE\u590D\u62A5\u544A.md",
+              "RelativeToolTip": "MFCApplication1\\docs\\\u6700\u7EC8\u4FEE\u590D\u62A5\u544A.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAE4BAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-01-22T09:26:39.3Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "LogManager.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\LogManager.h",
+              "RelativeDocumentMoniker": "MFCApplication1\\LogManager.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\LogManager.h",
+              "RelativeToolTip": "MFCApplication1\\LogManager.h",
+              "ViewState": "AgIAADkAAAAAAAAAAAAwwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-22T09:26:39.301Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 35,
+              "Title": "MockVisionSystem.cpp",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MockVisionSystem.cpp",
+              "RelativeDocumentMoniker": "MFCApplication1\\MockVisionSystem.cpp",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MockVisionSystem.cpp",
+              "RelativeToolTip": "MFCApplication1\\MockVisionSystem.cpp",
+              "ViewState": "AgIAAB4AAAAAAAAAAABIwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-01-22T09:26:39.302Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 34,
+              "Title": "MockVisionSystem.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MockVisionSystem.h",
+              "RelativeDocumentMoniker": "MFCApplication1\\MockVisionSystem.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MockVisionSystem.h",
+              "RelativeToolTip": "MFCApplication1\\MockVisionSystem.h",
+              "ViewState": "AgIAACEAAAAAAAAAAABIwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-22T09:26:39.303Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "ProcedureDlg.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureDlg.h",
+              "RelativeDocumentMoniker": "MFCApplication1\\ProcedureDlg.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\ProcedureDlg.h",
+              "RelativeToolTip": "MFCApplication1\\ProcedureDlg.h",
+              "ViewState": "AgIAACAAAAAAAAAAAAAnwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-22T09:26:39.303Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "IVisionSystem.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IVisionSystem.h",
+              "RelativeDocumentMoniker": "MFCApplication1\\IVisionSystem.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\IVisionSystem.h",
+              "RelativeToolTip": "MFCApplication1\\IVisionSystem.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-22T09:26:39.304Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 33,
+              "Title": "MFCApplication1Dlg.h",
+              "DocumentMoniker": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MFCApplication1Dlg.h",
+              "RelativeDocumentMoniker": "MFCApplication1\\MFCApplication1Dlg.h",
+              "ToolTip": "E:\\mywork\\surwindsurf\\MFCApplication1\\MFCApplication1\\MFCApplication1Dlg.h",
+              "RelativeToolTip": "MFCApplication1\\MFCApplication1Dlg.h",
+              "ViewState": "AgIAAAYAAAAAAAAAAIBJwBkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-01-22T09:26:39.305Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

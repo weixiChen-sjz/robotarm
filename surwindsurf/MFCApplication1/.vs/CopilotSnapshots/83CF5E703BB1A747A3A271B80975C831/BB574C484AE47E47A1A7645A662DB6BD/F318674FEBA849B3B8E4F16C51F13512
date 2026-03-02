@@ -1,0 +1,179 @@
+﻿//{{NO_DEPENDENCIES}}
+// Microsoft Visual C++ 生成的包含文件。
+// 由 MFCApplication1.rc 使用
+//
+#define IDR_MAINFRAME					128
+#define IDM_ABOUTBOX					0x0010
+#define IDD_ABOUTBOX					100
+#define IDS_ABOUTBOX					101
+#define IDD_MFCAPPLICATION1_DIALOG				102
+
+// 标准控件ID
+#define IDC_STATIC                      -1
+
+// 232串口控件ID
+#define IDC_COMBO_COM232                1000
+#define IDC_COMBO_BAUDRATE232           1001
+#define IDC_COMBO_DATABITS232           1002
+#define IDC_COMBO_STOPBITS232           1003
+#define IDC_COMBO_PARITY232             1004
+#define IDC_BUTTON_OPEN232              1005
+#define IDC_EDIT_SEND232                1006
+#define IDC_BUTTON_SEND232              1007
+#define IDC_LIST_RECEIVE232             1008
+#define IDC_CHECK_HEX232                1009
+#define IDC_BUTTON_CLEAR232             1010
+
+// 485串口控件ID
+#define IDC_COMBO_COM485                1011
+#define IDC_COMBO_BAUDRATE485           1012
+#define IDC_COMBO_DATABITS485           1013
+#define IDC_COMBO_STOPBITS485           1014
+#define IDC_COMBO_PARITY485             1015
+#define IDC_BUTTON_OPEN485              1016
+#define IDC_EDIT_SEND485                1017
+#define IDC_BUTTON_SEND485              1018
+#define IDC_LIST_RECEIVE485             1019
+#define IDC_CHECK_HEX485                1020
+#define IDC_BUTTON_CLEAR485             1021
+
+// 机械臂控件ID
+#define IDC_EDIT_ROBOT_IP               1022  // 机械臂IP地址（复用原COM口）
+#define IDC_EDIT_ROBOT_PORT             1023  // 机械臂端口（复用原波特率）
+#define IDC_BUTTON_CONNECT_ROBOT        1024
+#define IDC_BUTTON_INIT_ROBOT           1025
+#define IDC_BUTTON_HOME_ROBOT           1026
+#define IDC_BUTTON_START_ROBOT          1027
+#define IDC_BUTTON_STOP_ROBOT           1028
+#define IDC_BUTTON_ESTOP_ROBOT          1029
+#define IDC_EDIT_X_POS                  1030  // 当前X位置（只读）
+#define IDC_EDIT_Y_POS                  1031  // 当前Y位置（只读）
+#define IDC_EDIT_Z_POS                  1032  // 当前Z位置（只读）
+#define IDC_SLIDER_SPEED                1033
+#define IDC_STATIC_SPEED                1034
+#define IDC_BUTTON_POS1                 1035
+#define IDC_BUTTON_POS2                 1036
+#define IDC_BUTTON_POS3                 1037
+#define IDC_STATIC_ROBOT_STATUS         1038
+
+// ========== 机械臂新增控件ID (2000-2099) ==========
+#define IDC_EDIT_TARGET_X               2000  // 目标X位置（可编辑）
+#define IDC_EDIT_TARGET_Y               2001  // 目标Y位置（可编辑）
+#define IDC_EDIT_TARGET_Z               2002  // 目标Z位置（可编辑）
+#define IDC_BUTTON_REFRESH_POS          2003  // 刷新位置按钮
+#define IDC_CHECK_AUTO_REFRESH          2004  // 自动刷新复选框（已隐藏，保留ID兼容）
+
+// 微调控件（已隐藏，保留ID兼容）
+#define IDC_RADIO_STEP_01               2010  // 步进0.1mm单选按钮（已隐藏）
+#define IDC_RADIO_STEP_1                2011  // 步进1mm单选按钮（已隐藏）
+#define IDC_RADIO_STEP_10               2012  // 步进10mm单选按钮（已隐藏）
+#define IDC_BUTTON_X_PLUS               2013  // X轴+按钮（已隐藏）
+#define IDC_BUTTON_X_MINUS              2014  // X轴-按钮（已隐藏）
+#define IDC_BUTTON_Y_PLUS               2015  // Y轴+按钮（已隐藏）
+#define IDC_BUTTON_Y_MINUS              2016  // Y轴-按钮（已隐藏）
+#define IDC_BUTTON_Z_PLUS               2017  // Z轴+按钮（已隐藏）
+#define IDC_BUTTON_Z_MINUS              2018  // Z轴-按钮（已隐藏）
+
+#define IDC_BUTTON_SAVE_POS1            2020  // 保存位置1按钮（已隐藏）
+#define IDC_BUTTON_SAVE_POS2            2021  // 保存位置2按钮（已隐藏）
+#define IDC_BUTTON_SAVE_POS3            2022  // 保存位置3按钮（已隐藏）
+#define IDC_STATIC_POS1_INFO            2023  // 位置1信息显示（已隐藏）
+#define IDC_STATIC_POS2_INFO            2024  // 位置2信息显示（已隐藏）
+#define IDC_STATIC_POS3_INFO            2025  // 位置3信息显示（已隐藏）
+
+// I/O控件ID
+#define IDC_BUTTON_IO_INIT              1039  // 初始化I/O按钮
+#define IDC_STATIC_IO_HW_STATUS         1040  // 硬件状态显示
+#define IDC_STATIC_IO1_STATUS           1041  // 输液开关状态显示
+#define IDC_STATIC_IO2_STATUS           1042  // 消毒液开关状态显示
+#define IDC_STATIC_IO3_STATUS           1043  // 输液阀状态显示
+#define IDC_STATIC_IO4_STATUS           1044  // 消毒液阀状态显示
+#define IDC_STATIC_IO5_STATUS           1045  // 激光电源状态显示
+#define IDC_STATIC_IO6_STATUS           1060  // 其他IO状态标签显示
+#define IDC_BUTTON_INFUSION_OPEN        1046  // 打开输液阀按钮
+#define IDC_BUTTON_INFUSION_CLOSE       1047  // 关闭输液阀按钮
+#define IDC_BUTTON_DISINFECT_OPEN       1048  // 打开消毒液阀按钮
+#define IDC_BUTTON_DISINFECT_CLOSE      1049  // 关闭消毒液阀按钮
+#define IDC_BUTTON_LASER_OPEN           1050  // 打开激光电源按钮
+#define IDC_BUTTON_LASER_CLOSE          1051  // 关闭激光电源按钮
+
+// 日志控件ID
+#define IDC_LIST_LOG                    1052
+#define IDC_BUTTON_EXPORT_LOG           1053
+#define IDC_BUTTON_CLEAR_LOG            1054
+
+// 分组框ID
+#define IDC_GROUP_232                   1055
+#define IDC_GROUP_485                   1056
+#define IDC_GROUP_ROBOT                 1057
+#define IDC_GROUP_IO                    1058
+#define IDC_GROUP_LOG                   1059
+
+// ========== 流程控制相关ID (3000-3099) ==========
+
+// 对话框ID
+#define IDD_PROCEDURE_DIALOG            3000  // 流程控制对话框
+
+// 主界面的流程控制按钮
+#define IDC_BUTTON_OPEN_PROCEDURE       3001  // 打开流程控制面板按钮
+
+// 机械臂连接（复用部分已有ID）
+// IDC_EDIT_ROBOT_IP (1022) - 已存在，复用
+// IDC_EDIT_ROBOT_PORT (1023) - 已存在，复用
+// IDC_BUTTON_CONNECT_ROBOT (1024) - 已存在，复用
+#define IDC_BUTTON_DISCONNECT_ROBOT     3003  // 断开按钮
+#define IDC_STATIC_ROBOT_CONNECTION     3004  // 连接状态显示
+
+// 流程控制按钮
+#define IDC_BUTTON_START_PROCEDURE      3010  // 开始完整流程
+#define IDC_BUTTON_STOP_PROCEDURE       3011  // 停止流程
+#define IDC_BUTTON_EMERGENCY_STOP       3012  // 急停
+
+// 流程状态显示
+#define IDC_STATIC_PROCEDURE_STATUS     3015  // 流程状态文本
+#define IDC_STATIC_CURRENT_STEP         3016  // 当前步骤文本
+#define IDC_PROGRESS_PROCEDURE          3017  // 流程进度条
+
+// 步骤监控列表
+#define IDC_LIST_STEP_MONITOR           3020  // 步骤监控列表
+
+// 流程参数编辑框
+#define IDC_EDIT_PUNCTURE_DEPTH         3030  // 穿刺深度
+#define IDC_EDIT_SAFE_HEIGHT            3031  // 安全高度
+#define IDC_EDIT_COARSE_PRECISION       3032  // 粗调精度
+#define IDC_EDIT_FINE_PRECISION         3033  // 精调精度
+#define IDC_EDIT_DISINFECT_TIME         3034  // 消毒时间
+
+// 参数操作按钮
+#define IDC_BUTTON_SAVE_PARAMS          3035  // 保存参数
+#define IDC_BUTTON_RESET_PARAMS         3036  // 恢复默认
+#define IDC_BUTTON_EXPORT_PARAMS        3037  // 导出参数（新增）
+
+// 单步测试按钮
+#define IDC_BUTTON_STEP2_TEST           3040  // 测试步骤2
+#define IDC_BUTTON_STEP4_TEST           3041  // 测试步骤4
+#define IDC_BUTTON_STEP5_TEST           3042  // 测试步骤5
+#define IDC_BUTTON_STEP6_TEST           3043  // 测试步骤6
+#define IDC_BUTTON_STEP7_TEST           3044  // 测试步骤7
+
+// 流程对话框专用控件
+#define IDC_EDIT_PROCEDURE_LOG          3050  // 操作日志编辑框
+#define IDC_BUTTON_CLEAR_PROCEDURE_LOG  3051  // 清空日志按钮
+
+// 分组框ID
+#define IDC_GROUP_PROCEDURE             3060  // 流程控制分组框
+#define IDC_GROUP_STEP_MONITOR          3061  // 步骤监控分组框
+#define IDC_GROUP_PARAMS                3062  // 流程参数分组框
+#define IDC_GROUP_DEBUG                 3063  // 单步调试分组框
+
+// 下面是下一个默认值
+//
+#ifdef APSTUDIO_INVOKED
+#ifndef APSTUDIO_READONLY_SYMBOLS
+
+#define _APS_NEXT_RESOURCE_VALUE	129
+#define _APS_NEXT_CONTROL_VALUE		3070
+#define _APS_NEXT_SYMED_VALUE		101
+#define _APS_NEXT_COMMAND_VALUE		32771
+#endif
+#endif

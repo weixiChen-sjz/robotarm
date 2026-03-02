@@ -1,0 +1,213 @@
+﻿#include "pch.h"
+#include "RobotArmController.h"
+
+CRobotArmController::CRobotArmController()
+    : m_state(STATE_DISCONNECTED)
+    , m_nSpeed(50)
+{
+}
+
+CRobotArmController::~CRobotArmController()
+{
+    Disconnect();
+}
+
+BOOL CRobotArmController::Connect(int nPort, int nBaudRate)
+{
+    if (m_serialPort.Open(nPort, nBaudRate))
+    {
+        m_state = STATE_CONNECTED;
+        return TRUE;
+    }
+    
+    m_state = STATE_DISCONNECTED;
+    return FALSE;
+}
+
+void CRobotArmController::Disconnect()
+{
+    m_serialPort.Close();
+    m_state = STATE_DISCONNECTED;
+}
+
+BOOL CRobotArmController::Initialize()
+{
+    if (m_state == STATE_DISCONNECTED)
+    {
+        return FALSE;
+    }
+
+    CString strResponse;
+    if (SendCommand(_T("INIT\r\n"), strResponse))
+    {
+        if (strResponse.Find(_T("OK")) >= 0)
+        {
+            m_state = STATE_INITIALIZED;
+            m_currentPos = RobotArmPosition(0, 0, 0);
+            return TRUE;
+        }
+    }
+
+    m_state = STATE_ERROR;
+    return FALSE;
+}
+
+BOOL CRobotArmController::GoHome()
+{
+    if (m_state != STATE_INITIALIZED && m_state != STATE_MOVING)
+    {
+        return FALSE;
+    }
+
+    CString strResponse;
+    if (SendCommand(_T("HOME\r\n"), strResponse))
+    {
+        if (strResponse.Find(_T("OK")) >= 0)
+        {
+            m_currentPos = RobotArmPosition(0, 0, 0);
+            m_state = STATE_INITIALIZED;
+            return TRUE;
+        }
+    }
+
+    m_state = STATE_ERROR;
+    return FALSE;
+}
+
+BOOL CRobotArmController::MoveTo(const RobotArmPosition& pos, int nSpeed)
+{
+    if (m_state != STATE_INITIALIZED && m_state != STATE_MOVING)
+    {
+        return FALSE;
+    }
+
+    CString strCmd;
+    strCmd.Format(_T("MOVE %.2f,%.2f,%.2f,%d\r\n"), pos.X, pos.Y, pos.Z, nSpeed);
+
+    CString strResponse;
+    if (SendCommand(strCmd, strResponse))
+    {
+        if (strResponse.Find(_T("OK")) >= 0)
+        {
+            m_state = STATE_MOVING;
+            m_currentPos = pos;
+            
+            // 模拟等待移动完成
+            Sleep(100);
+            m_state = STATE_INITIALIZED;
+            return TRUE;
+        }
+    }
+
+    m_state = STATE_ERROR;
+    return FALSE;
+}
+
+BOOL CRobotArmController::Stop()
+{
+    CString strResponse;
+    if (SendCommand(_T("STOP\r\n"), strResponse))
+    {
+        if (strResponse.Find(_T("OK")) >= 0)
+        {
+            m_state = STATE_INITIALIZED;
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+BOOL CRobotArmController::EmergencyStop()
+{
+    CString strResponse;
+    if (SendCommand(_T("ESTOP\r\n"), strResponse))
+    {
+        m_state = STATE_INITIALIZED;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+void CRobotArmController::SetSpeed(int nSpeed)
+{
+    if (nSpeed < 0)
+        nSpeed = 0;
+    if (nSpeed > 100)
+        nSpeed = 100;
+    
+    m_nSpeed = nSpeed;
+}
+
+BOOL CRobotArmController::IsConnected() const
+{
+    return m_serialPort.IsOpen() && m_state != STATE_DISCONNECTED;
+}
+
+BOOL CRobotArmController::SendCommand(const CString& strCmd, CString& strResponse, DWORD dwTimeout)
+{
+    if (!m_serialPort.IsOpen())
+    {
+        return FALSE;
+    }
+
+    // 转换为 ANSI 字符串发送
+    CStringA strCmdA(strCmd);
+    
+    // 发送命令
+    if (!m_serialPort.SendData(strCmdA.GetString(), strCmdA.GetLength()))
+    {
+        return FALSE;
+    }
+
+    // 等待响应
+    DWORD dwStartTime = GetTickCount();
+    char szBuffer[256] = {0};
+    DWORD dwBytesRead = 0;
+    
+    strResponse.Empty();
+    
+    while (GetTickCount() - dwStartTime < dwTimeout)
+    {
+        if (m_serialPort.ReceiveData(szBuffer, sizeof(szBuffer) - 1, dwBytesRead))
+        {
+            if (dwBytesRead > 0)
+            {
+                szBuffer[dwBytesRead] = '\0';
+                strResponse += CString(szBuffer);
+                
+                // 检查是否收到完整响应（以\r\n结尾）
+                if (strResponse.Find(_T("\r\n")) >= 0)
+                {
+                    return TRUE;
+                }
+            }
+        }
+        
+        Sleep(10);
+    }
+
+    // 超时，但如果有部分响应也返回TRUE
+    return !strResponse.IsEmpty();
+}
+
+BOOL CRobotArmController::ParsePosition(const CString& strResponse, RobotArmPosition& pos)
+{
+    // 解析格式: "POS X,Y,Z\r\n"
+    int nStart = strResponse.Find(_T("POS"));
+    if (nStart < 0)
+    {
+        return FALSE;
+    }
+
+    CString strPos = strResponse.Mid(nStart + 3);
+    strPos.Trim();
+
+    if (_stscanf_s(strPos, _T("%lf,%lf,%lf"), &pos.X, &pos.Y, &pos.Z) == 3)
+    {
+        return TRUE;
+    }
+
+    return FALSE;
+}

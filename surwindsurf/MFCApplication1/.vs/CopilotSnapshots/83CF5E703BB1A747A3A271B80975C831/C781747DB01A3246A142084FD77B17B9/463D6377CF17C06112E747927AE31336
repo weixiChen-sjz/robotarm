@@ -1,0 +1,121 @@
+﻿// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#ifndef APSTUDIO_INVOKED
+#include "targetver.h"
+#endif
+#include "afxres.h"
+#include "verrsrc.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// 中文(简体，中国) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE 4, 2
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 170, 62
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "关于 MFCApplication1"
+FONT 9, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,14,14,21,20
+    LTEXT           "MFCApplication1，版本 1.0",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "版权所有 (C) 2024",IDC_STATIC,42,26,114,8
+    DEFPUSHBUTTON   "确定",IDOK,113,41,50,14,WS_GROUP
+END
+
+IDD_PROCEDURE_DIALOG DIALOGEX 0, 0, 800, 600
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "流程控制"
+FONT 9, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    GROUPBOX        "流程控制",IDC_STATIC,7,7,786,100
+    PUSHBUTTON      "◆ 开始完整流程",IDC_BUTTON_START_PROCEDURE,20,25,120,35
+    PUSHBUTTON      "■ 停止流程",IDC_BUTTON_STOP_PROCEDURE,150,25,100,35
+    PUSHBUTTON      "⊗ 急停",IDC_BUTTON_EMERGENCY_STOP,260,25,80,35
+    LTEXT           "流程状态: 【就绪】",IDC_STATIC_PROCEDURE_STATUS,360,30,200,10
+    LTEXT           "当前步骤: 【无】",IDC_STATIC_CURRENT_STEP,360,50,200,10
+    LTEXT           "执行进度:",IDC_STATIC,20,70,50,10
+    CONTROL         "",IDC_PROGRESS_PROCEDURE,"msctls_progress32",WS_BORDER,80,68,400,15
+    LTEXT           "0% (0/7)",IDC_STATIC,490,70,60,10
+    
+    // ========== 左侧：步骤监控列表 ==========
+    GROUPBOX        "步骤监控",IDC_STATIC,7,115,500,240
+    CONTROL         "",IDC_LIST_STEP_MONITOR,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,15,130,485,215
+    
+    // ========== ★ 新增：实时数据监控区 ========== 
+    GROUPBOX        "实时数据监控",IDC_STATIC,7,363,500,112
+    LTEXT           "激光距离: -- mm",IDC_STATIC_LASER_DISTANCE,17,380,150,10
+    LTEXT           "距离误差: -- mm",IDC_STATIC_DISTANCE_ERROR,177,380,150,10
+    LTEXT           "目标高度: 100.0 mm",IDC_STATIC,337,380,150,10
+    LTEXT           "机械臂位置: X:-- Y:-- Z:-- Theta:--°",IDC_STATIC_ROBOT_POSITION,17,400,470,10
+    LTEXT           "视觉坐标: (未启用)",IDC_STATIC_VISION_COORD,17,420,470,10
+    LTEXT           "执行状态: 等待中...",IDC_STATIC,17,440,470,10
+    PUSHBUTTON      "暂停",IDC_BUTTON_PAUSE_PROCEDURE,17,455,60,15
+    
+    // ========== 右侧上部：流程参数设置 ==========
+    GROUPBOX        "流程参数设置",IDC_STATIC,515,115,278,140
+    
+    LTEXT           "目标高度 (mm):",IDC_STATIC,525,133,80,10
+    EDITTEXT        IDC_EDIT_TARGET_HEIGHT,615,131,70,14,ES_AUTOHSCROLL
+    LTEXT           "默认: 100.0",IDC_STATIC,695,133,80,10
+    
+    LTEXT           "穿刺深度 (mm):",IDC_STATIC,525,153,80,10
+    EDITTEXT        IDC_EDIT_PUNCTURE_DEPTH,615,151,70,14,ES_AUTOHSCROLL
+    LTEXT           "默认: 50.0",IDC_STATIC,695,153,80,10
+    
+    LTEXT           "安全高度 (mm):",IDC_STATIC,525,173,80,10
+    EDITTEXT        IDC_EDIT_SAFE_HEIGHT,615,171,70,14,ES_AUTOHSCROLL
+    LTEXT           "默认: 100.0",IDC_STATIC,695,173,80,10
+    
+    LTEXT           "粗调精度 (mm):",IDC_STATIC,525,193,80,10
+    EDITTEXT        IDC_EDIT_COARSE_TOLERANCE,615,191,70,14,ES_AUTOHSCROLL
+    LTEXT           "默认: 2.0",IDC_STATIC,695,193,80,10
+    
+    LTEXT           "精调精度 (mm):",IDC_STATIC,525,213,80,10
+    EDITTEXT        IDC_EDIT_FINE_TOLERANCE,615,211,70,14,ES_AUTOHSCROLL
+    LTEXT           "默认: 0.2",IDC_STATIC,695,213,80,10
+    
+    LTEXT           "消毒时间 (s):",IDC_STATIC,525,233,80,10
+    EDITTEXT        IDC_EDIT_DISINFECT_TIME,615,231,70,14,ES_AUTOHSCROLL
+    LTEXT           "默认: 2.0",IDC_STATIC,695,233,80,10
+    
+    // ========== 右侧中部：视觉系统选项 ==========
+    GROUPBOX        "高级选项",IDC_STATIC,515,263,278,52
+    CONTROL         "启用视觉系统",IDC_CHECK_ENABLE_VISION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,525,280,100,10
+    PUSHBUTTON      "保存参数",IDC_BUTTON_SAVE_PARAMS,525,295,80,15
+    PUSHBUTTON      "恢复默认",IDC_BUTTON_RESET_PARAMS,615,295,80,15
+    PUSHBUTTON      "导出参数",IDC_BUTTON_EXPORT_PARAMS,705,295,80,15
+    
+    // ========== 右侧下部：单步调试 ==========
+    GROUPBOX        "单步调试",IDC_STATIC,515,323,278,152
+    LTEXT           "测试关键步骤:",IDC_STATIC,525,343,80,10
+    PUSHBUTTON      "步骤1: 视觉定位",IDC_BUTTON_STEP1_TEST,525,363,120,25
+    PUSHBUTTON      "步骤3: 识别穿刺点",IDC_BUTTON_STEP3_TEST,655,363,120,25
+    PUSHBUTTON      "步骤2: 激光粗调",IDC_BUTTON_STEP2_TEST,525,393,120,25
+    PUSHBUTTON      "步骤4: 精准对位",IDC_BUTTON_STEP4_TEST,655,393,120,25
+    PUSHBUTTON      "步骤5: 消毒准备",IDC_BUTTON_STEP5_TEST,525,423,120,25
+    PUSHBUTTON      "步骤6: 穿刺执行",IDC_BUTTON_STEP6_TEST,655,423,120,25
+    PUSHBUTTON      "步骤7: 输液启动",IDC_BUTTON_STEP7_TEST,525,453,120,25
+    
+    // ========== 底部：操作日志 ==========
+    GROUPBOX        "操作日志",IDC_STATIC,7,483,786,90
+    EDITTEXT        IDC_EDIT_PROCEDURE_LOG,15,498,770,65,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    DEFPUSHBUTTON   "关闭",IDOK,650,580,70,20
+    PUSHBUTTON      "清空日志",IDC_BUTTON_CLEAR_PROCEDURE_LOG,730,580,70,20
+END
+

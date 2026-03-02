@@ -1,0 +1,204 @@
+﻿#include "pch.h"
+#include "SerialPort.h"
+
+CSerialPort::CSerialPort()
+    : m_hComm(INVALID_HANDLE_VALUE)
+{
+    ZeroMemory(&m_ovRead, sizeof(OVERLAPPED));
+    ZeroMemory(&m_ovWrite, sizeof(OVERLAPPED));
+}
+
+CSerialPort::~CSerialPort()
+{
+    Close();
+}
+
+BOOL CSerialPort::Open(int nPort, int nBaudRate, int nDataBits, int nStopBits, int nParity)
+{
+    // 如果已经打开，先关闭
+    if (IsOpen())
+    {
+        Close();
+    }
+
+    // 构造串口名称
+    CString strPort;
+    strPort.Format(_T("\\\\.\\COM%d"), nPort);
+
+    // 打开串口
+    m_hComm = CreateFile(strPort,
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_FLAG_OVERLAPPED,
+        NULL);
+
+    if (m_hComm == INVALID_HANDLE_VALUE)
+    {
+        return FALSE;
+    }
+
+    // 初始化重叠结构
+    if (!InitOverlapped())
+    {
+        Close();
+        return FALSE;
+    }
+
+    // 设置缓冲区大小
+    SetupComm(m_hComm, 4096, 4096);
+
+    // 清空缓冲区
+    PurgeComm(m_hComm, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);
+
+    // 设置超时
+    COMMTIMEOUTS TimeOuts;
+    TimeOuts.ReadIntervalTimeout = MAXDWORD;
+    TimeOuts.ReadTotalTimeoutMultiplier = 0;
+    TimeOuts.ReadTotalTimeoutConstant = 0;
+    TimeOuts.WriteTotalTimeoutMultiplier = 50;
+    TimeOuts.WriteTotalTimeoutConstant = 500;
+    SetCommTimeouts(m_hComm, &TimeOuts);
+
+    // 配置串口参数
+    DCB dcb;
+    GetCommState(m_hComm, &dcb);
+    dcb.BaudRate = nBaudRate;
+    dcb.ByteSize = nDataBits;
+    dcb.Parity = nParity;
+    dcb.StopBits = nStopBits;
+    dcb.fBinary = TRUE;
+    dcb.fParity = (nParity != NOPARITY);
+
+    if (!SetCommState(m_hComm, &dcb))
+    {
+        Close();
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+void CSerialPort::Close()
+{
+    if (IsOpen())
+    {
+        CleanupOverlapped();
+        CloseHandle(m_hComm);
+        m_hComm = INVALID_HANDLE_VALUE;
+    }
+}
+
+BOOL CSerialPort::SendData(const char* pData, DWORD dwSize)
+{
+    if (!IsOpen() || pData == NULL || dwSize == 0)
+    {
+        return FALSE;
+    }
+
+    DWORD dwBytesWritten = 0;
+    DWORD dwError = 0;
+    COMSTAT comStat;
+
+    ClearCommError(m_hComm, &dwError, &comStat);
+
+    if (!WriteFile(m_hComm, pData, dwSize, &dwBytesWritten, &m_ovWrite))
+    {
+        if (GetLastError() == ERROR_IO_PENDING)
+        {
+            // 等待写操作完成
+            if (!GetOverlappedResult(m_hComm, &m_ovWrite, &dwBytesWritten, TRUE))
+            {
+                return FALSE;
+            }
+        }
+        else
+        {
+            return FALSE;
+        }
+    }
+
+    return (dwBytesWritten == dwSize);
+}
+
+BOOL CSerialPort::ReceiveData(char* pBuffer, DWORD dwSize, DWORD& dwBytesRead)
+{
+    if (!IsOpen() || pBuffer == NULL || dwSize == 0)
+    {
+        dwBytesRead = 0;
+        return FALSE;
+    }
+
+    DWORD dwError = 0;
+    COMSTAT comStat;
+    ClearCommError(m_hComm, &dwError, &comStat);
+
+    if (comStat.cbInQue == 0)
+    {
+        dwBytesRead = 0;
+        return TRUE;
+    }
+
+    DWORD dwBytesToRead = min(dwSize, comStat.cbInQue);
+    dwBytesRead = 0;
+
+    if (!ReadFile(m_hComm, pBuffer, dwBytesToRead, &dwBytesRead, &m_ovRead))
+    {
+        if (GetLastError() == ERROR_IO_PENDING)
+        {
+            if (!GetOverlappedResult(m_hComm, &m_ovRead, &dwBytesRead, TRUE))
+            {
+                return FALSE;
+            }
+        }
+        else
+        {
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
+void CSerialPort::ClearBuffer()
+{
+    if (IsOpen())
+    {
+        PurgeComm(m_hComm, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);
+    }
+}
+
+BOOL CSerialPort::InitOverlapped()
+{
+    m_ovRead.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (m_ovRead.hEvent == NULL)
+    {
+        return FALSE;
+    }
+
+    m_ovWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (m_ovWrite.hEvent == NULL)
+    {
+        CloseHandle(m_ovRead.hEvent);
+        m_ovRead.hEvent = NULL;
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+void CSerialPort::CleanupOverlapped()
+{
+    if (m_ovRead.hEvent != NULL)
+    {
+        CloseHandle(m_ovRead.hEvent);
+        m_ovRead.hEvent = NULL;
+    }
+
+    if (m_ovWrite.hEvent != NULL)
+    {
+        CloseHandle(m_ovWrite.hEvent);
+        m_ovWrite.hEvent = NULL;
+    }
+}

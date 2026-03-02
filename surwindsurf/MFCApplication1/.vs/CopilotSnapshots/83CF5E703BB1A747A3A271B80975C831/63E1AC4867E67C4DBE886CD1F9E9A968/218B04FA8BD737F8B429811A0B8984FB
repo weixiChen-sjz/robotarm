@@ -1,0 +1,150 @@
+﻿#pragma once
+#include "ProcedureParams.h"
+#include "IVisionSystem.h"
+#include "RobotArmController.h"
+#include "SerialPort.h"
+#include "IOController.h"
+
+// 流程状态枚举
+enum ProcedureState
+{
+	PROC_STATE_IDLE,         // 空闲
+	PROC_STATE_RUNNING,      // 运行中
+	PROC_STATE_PAUSED,       // 暂停
+	PROC_STATE_STOPPED,      // 已停止
+	PROC_STATE_COMPLETED,    // 完成
+	PROC_STATE_ERROR         // 错误
+};
+
+// 流程控制器
+// 负责管理7步穿刺流程的执行
+class CProcedureController
+{
+public:
+	CProcedureController();
+	~CProcedureController();
+	
+	// ========== 初始化 ==========
+	// 设置硬件设备接口
+	void SetRobotArm(CRobotArmController* pRobotArm);
+	void SetSerial232(CSerialPort* pSerial232);
+	void SetSerial485(CSerialPort* pSerial485);
+	void SetIOController(CIOController* pIOController);
+	
+	// 设置视觉系统接口（可选，预留）
+	void SetVisionSystem(IVisionSystem* pVision);
+	
+	// 设置流程参数
+	void SetParams(const ProcedureParams& params);
+	const ProcedureParams& GetParams() const { return m_params; }
+	
+	// ========== 流程控制 ==========
+	// 启动完整流程（7步）
+	BOOL StartProcedure();
+	
+	// 停止流程
+	void StopProcedure();
+	
+	// 暂停流程
+	void PauseProcedure();
+	
+	// 恢复流程
+	void ResumeProcedure();
+	
+	// 紧急停止（立即停止所有设备）
+	void EmergencyStop();
+	
+	// ========== 单步执行（用于调试）==========
+	BOOL ExecuteStep(int stepNumber);
+	
+	// ========== 状态查询 ==========
+	ProcedureState GetState() const { return m_state; }
+	int GetCurrentStep() const { return m_nCurrentStep; }
+	float GetProgress() const;  // 返回 0~100
+	
+	// 获取步骤名称
+	CString GetStepName(int stepNumber) const;
+	
+	// ========== 回调通知 ==========
+	// 设置状态变化回调函数
+	typedef void (*StateChangeCallback)(ProcedureState newState, void* pUserData);
+	void SetStateChangeCallback(StateChangeCallback callback, void* pUserData);
+	
+	// 设置步骤变化回调函数
+	typedef void (*StepChangeCallback)(int stepNumber, BOOL bSuccess, void* pUserData);
+	void SetStepChangeCallback(StepChangeCallback callback, void* pUserData);
+	
+private:
+	// ========== 7步流程实现 ==========
+	BOOL ExecuteStep1_VisionLocate();          // 步骤1：视觉定位
+	BOOL ExecuteStep2_LaserCoarseAdjust();     // 步骤2：激光粗调
+	BOOL ExecuteStep3_DetectPuncturePoint();   // 步骤3：识别穿刺点
+	BOOL ExecuteStep4_PreciseAlignment();      // 步骤4：精准对位
+	BOOL ExecuteStep5_Disinfection();          // 步骤5：消毒准备
+	BOOL ExecuteStep6_Puncture();              // 步骤6：穿刺执行
+	BOOL ExecuteStep7_Infusion();              // 步骤7：输液启动
+	
+	// ========== 辅助函数 ==========
+	// 获取激光测距仪距离
+	float GetLaserDistance();
+	
+	// 等待电机完成（步骤6）
+	BOOL WaitForMotorComplete(int nTimeoutMs);
+	
+	// 使用手动位置（视觉系统未启用时）
+	BOOL UseManualPosition();
+	
+	// 检查硬件状态
+	BOOL CheckHardwareReady();
+	
+	// 异常回滚（关闭所有开关，停止机械臂）
+	void Rollback();
+	
+	// 日志输出
+	void LogInfo(LPCTSTR format, ...);
+	void LogWarning(LPCTSTR format, ...);
+	void LogError(LPCTSTR format, ...);
+	
+	// 状态变化通知
+	void NotifyStateChange(ProcedureState newState);
+	void NotifyStepChange(int stepNumber, BOOL bSuccess);
+	
+	// ========== 线程相关 ==========
+	// 流程执行线程
+	static UINT ThreadFunc(LPVOID pParam);
+	void ThreadProcedure();
+	
+	HANDLE m_hThread;           // 线程句柄
+	BOOL m_bThreadRunning;      // 线程运行标志
+	BOOL m_bStopRequest;        // 停止请求标志
+	BOOL m_bPauseRequest;       // 暂停请求标志
+	
+	// ========== 成员变量 ==========
+	// 硬件设备接口
+	CRobotArmController* m_pRobotArm;
+	CSerialPort* m_pSerial232;
+	CSerialPort* m_pSerial485;
+	CIOController* m_pIOController;
+	
+	// 视觉系统接口（可选）
+	IVisionSystem* m_pVision;
+	
+	// 流程参数
+	ProcedureParams m_params;
+	
+	// 流程状态
+	ProcedureState m_state;
+	int m_nCurrentStep;        // 当前执行步骤（1~7）
+	
+	// 穿刺点位置（步骤3识别后保存）
+	RobotArmPosition m_puncturePoint;
+	
+	// 回调函数
+	StateChangeCallback m_stateCallback;
+	void* m_stateCallbackUserData;
+	StepChangeCallback m_stepCallback;
+	void* m_stepCallbackUserData;
+	
+	// 线程同步
+	CRITICAL_SECTION m_cs;     // 临界区
+};

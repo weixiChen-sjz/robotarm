@@ -1,0 +1,142 @@
+﻿#pragma once
+#include "afxdialogex.h"
+#include "Resource.h"
+#include "ProcedureController.h"
+#include "ProcedureParams.h"
+#include "LogManager.h"
+
+// UI线程追加日志消息
+#define WM_APPEND_PROCEDURE_LOG (WM_APP + 101)
+
+// 定时器ID
+#define TIMER_UPDATE_PROCEDURE  3001   // 流程状态更新定时器
+
+// CProcedureDlg 对话框
+
+class CProcedureDlg : public CDialogEx
+{
+	DECLARE_DYNAMIC(CProcedureDlg)
+
+public:
+	CProcedureDlg(CWnd* pParent = nullptr);
+	virtual ~CProcedureDlg();
+
+// 对话框数据
+#ifdef AFX_DESIGN_TIME
+	enum { IDD = IDD_PROCEDURE_DIALOG };
+#endif
+
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);
+	virtual BOOL OnInitDialog();
+	virtual void OnOK();  // 重写，防止Enter键关闭对话框
+	virtual void OnCancel();  // 重写，关闭前确认
+
+	DECLARE_MESSAGE_MAP()
+
+public:
+	// ========== 流程控制器 ==========
+	CProcedureController m_controller;      // 流程控制器实例
+	
+	// ========== 流程参数 ==========
+	ProcedureParams m_params;               // 流程参数
+	
+	// ========== 状态变量 ==========
+	BOOL m_bInitialized;                    // 是否已初始化
+	ULONGLONG m_dwStepStartTime[7];         // ★ 改为ULONGLONG：每步开始时间（用于计算耗时）
+	
+	// ★ 新增：步骤6冷却时间
+	ULONGLONG m_dwStep6LastExecuteTime;     // ★ 改为ULONGLONG：步骤6上次执行完成时间
+	static const int STEP6_COOLDOWN_MS = 5000;  // 5秒冷却时间（毫秒）
+	
+	// ========== 消息处理函数 ==========
+	
+	// 定时器
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnDestroy();
+	afx_msg LRESULT OnAppendProcedureLog(WPARAM wParam, LPARAM lParam);
+	
+	// 流程控制按钮
+	afx_msg void OnBnClickedButtonStartProcedure();
+	afx_msg void OnBnClickedButtonStopProcedure();
+	afx_msg void OnBnClickedButtonPauseProcedure();
+	afx_msg void OnBnClickedButtonEmergencyStop();
+	
+	// 参数管理按钮
+	afx_msg void OnBnClickedButtonSaveParams();
+	afx_msg void OnBnClickedButtonResetParams();
+	afx_msg void OnBnClickedButtonImportParams();
+	afx_msg void OnBnClickedButtonExportParams();
+	
+	// 单步测试按钮
+	afx_msg void OnBnClickedButtonStep1Test();
+	afx_msg void OnBnClickedButtonStep2Test();
+	afx_msg void OnBnClickedButtonStep3Test();
+	afx_msg void OnBnClickedButtonStep4Test();
+	afx_msg void OnBnClickedButtonStep5Test();
+	afx_msg void OnBnClickedButtonStep6Test();
+	afx_msg void OnBnClickedButtonStep7Test();
+	
+	// 视觉系统复选框
+	afx_msg void OnBnClickedCheckEnableVision();
+	
+	// 清空流程面板日志
+	afx_msg void OnBnClickedButtonClearProcedureLog();
+	
+	// ========== 辅助函数 ==========
+	
+	// 初始化控件
+	void InitializeControls();
+	
+	// 初始化流程控制器
+	void InitializeController();
+	
+	// 更新流程状态显示
+	void UpdateProcedureStatus();
+	
+	// 更新步骤监控列表
+	void UpdateStepMonitor(int stepNumber, CString status, CString time, CString note);
+	
+	// 更新实时数据显示
+	void UpdateRealTimeData();
+	
+	// 加载/保存流程参数
+	void LoadProcedureParams();
+	void SaveProcedureParams();
+	void ResetProcedureParams();
+	void ImportProcedureParams();
+	void ExportProcedureParams();
+	
+	// 从界面读取参数到 m_params
+	void ReadParamsFromUI();
+	
+	// 从 m_params 显示到界面
+	void DisplayParamsToUI();
+	
+	// 启用/禁用控件
+	void EnableControls(BOOL bEnable);
+	
+	// 获取主对话框指针（用于访问硬件设备）
+	class CMFCApplication1Dlg* GetMainDlg();
+	
+	// ========== 流程控制器回调函数 ==========
+	// 状态变化回调
+	static void OnStateChanged(ProcedureState newState, void* pUserData);
+	
+	// 步骤变化回调
+	static void OnStepChanged(int stepNumber, BOOL bSuccess, void* pUserData);
+
+	// 日志回调
+	static void OnLogAppended(const LogEntry& entry, void* pUserData);
+	void AppendLogLine(const LogEntry& entry);
+
+private:
+	BOOL m_bSubscribedLog;
+	void SubscribeLogs(BOOL bSubscribe);
+	void ClearProcedureLogUI();
+	void AddUserOpLog(const CString& action);
+	// ★ 新增：INI文件读写辅助函数
+	float GetPrivateProfileFloat(LPCTSTR lpSection, LPCTSTR lpKey, float fDefault, LPCTSTR lpFile);
+	void WritePrivateProfileFloat(LPCTSTR lpSection, LPCTSTR lpKey, float fValue, LPCTSTR lpFile);
+	void WritePrivateProfileInt(LPCTSTR lpSection, LPCTSTR lpKey, int nValue, LPCTSTR lpFile);
+};

@@ -1,0 +1,341 @@
+﻿// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#ifndef APSTUDIO_INVOKED
+#include "targetver.h"
+#endif
+#include "afxres.h"
+#include "verrsrc.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// 中文(简体，中国) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE 4, 2
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 170, 62
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "关于 MFCApplication1"
+FONT 9, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,14,14,21,20
+    LTEXT           "MFCApplication1，版本 1.0",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "版权所有 (C) 2024",IDC_STATIC,42,26,114,8
+    DEFPUSHBUTTON   "确定",IDOK,113,41,50,14,WS_GROUP
+END
+
+IDD_PROCEDURE_DIALOG DIALOGEX 0, 0, 800, 600
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "流程控制"
+FONT 9, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    GROUPBOX        "流程控制",IDC_STATIC,7,7,786,100
+    PUSHBUTTON      "◆ 开始完整流程",IDC_BUTTON_START_PROCEDURE,20,25,120,35
+    PUSHBUTTON      "■ 停止流程",IDC_BUTTON_STOP_PROCEDURE,150,25,100,35
+    PUSHBUTTON      "⊗ 急停",IDC_BUTTON_EMERGENCY_STOP,260,25,80,35
+    LTEXT           "流程状态: 【就绪】",IDC_STATIC_PROCEDURE_STATUS,360,30,200,10
+    LTEXT           "当前步骤: 【无】",IDC_STATIC_CURRENT_STEP,360,50,200,10
+    LTEXT           "执行进度:",IDC_STATIC,20,70,50,10
+    CONTROL         "",IDC_PROGRESS_PROCEDURE,"msctls_progress32",WS_BORDER,80,68,400,15
+    LTEXT           "0% (0/7)",IDC_STATIC,490,70,60,10
+    GROUPBOX        "步骤监控",IDC_STATIC,7,115,500,360
+    CONTROL         "",IDC_LIST_STEP_MONITOR,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,15,130,485,335
+    GROUPBOX        "流程参数设置",IDC_STATIC,515,115,278,200
+    LTEXT           "穿刺深度 (mm):",IDC_STATIC,525,135,80,10
+    EDITTEXT        IDC_EDIT_PUNCTURE_DEPTH,615,133,70,14,ES_AUTOHSCROLL
+    LTEXT           "默认: 50.0",IDC_STATIC,695,135,80,10
+    LTEXT           "安全高度 (mm):",IDC_STATIC,525,160,80,10
+    EDITTEXT        IDC_EDIT_SAFE_HEIGHT,615,158,70,14,ES_AUTOHSCROLL
+    LTEXT           "默认: 100.0",IDC_STATIC,695,160,80,10
+    LTEXT           "粗调精度 (mm):",IDC_STATIC,525,185,80,10
+    EDITTEXT        IDC_EDIT_COARSE_PRECISION,615,183,70,14,ES_AUTOHSCROLL
+    LTEXT           "默认: 2.0",IDC_STATIC,695,185,80,10
+    LTEXT           "精调精度 (mm):",IDC_STATIC,525,210,80,10
+    EDITTEXT        IDC_EDIT_FINE_PRECISION,615,208,70,14,ES_AUTOHSCROLL
+    LTEXT           "默认: 0.2",IDC_STATIC,695,210,80,10
+    LTEXT           "消毒时间 (s):",IDC_STATIC,525,235,80,10
+    EDITTEXT        IDC_EDIT_DISINFECT_TIME,615,233,70,14,ES_AUTOHSCROLL
+    LTEXT           "默认: 2.0",IDC_STATIC,695,235,80,10
+    PUSHBUTTON      "保存参数",IDC_BUTTON_SAVE_PARAMS,525,265,80,25
+    PUSHBUTTON      "恢复默认",IDC_BUTTON_RESET_PARAMS,615,265,80,25
+    PUSHBUTTON      "导出参数",IDC_BUTTON_EXPORT_PARAMS,705,265,80,25
+    GROUPBOX        "单步调试",IDC_STATIC,515,323,278,152
+    LTEXT           "测试关键步骤:",IDC_STATIC,525,343,80,10
+    PUSHBUTTON      "步骤2: 激光粗调",IDC_BUTTON_STEP2_TEST,525,363,120,25
+    PUSHBUTTON      "步骤4: 精准对位",IDC_BUTTON_STEP4_TEST,655,363,120,25
+    PUSHBUTTON      "步骤5: 消毒准备",IDC_BUTTON_STEP5_TEST,525,398,120,25
+    PUSHBUTTON      "步骤6: 穿刺执行",IDC_BUTTON_STEP6_TEST,655,398,120,25
+    PUSHBUTTON      "步骤7: 输液启动",IDC_BUTTON_STEP7_TEST,525,433,120,25
+    GROUPBOX        "操作日志",IDC_STATIC,7,483,786,90
+    EDITTEXT        IDC_EDIT_PROCEDURE_LOG,15,498,770,65,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    DEFPUSHBUTTON   "关闭",IDOK,650,580,70,20
+    PUSHBUTTON      "清空日志",IDC_BUTTON_CLEAR_PROCEDURE_LOG,730,580,70,20
+END
+
+IDD_MFCAPPLICATION1_DIALOG DIALOGEX 0, 0, 1020, 720
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "医疗穿刺机器人自动化控制系统"
+FONT 9, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    // ==================== 第1列：232串口控制区====================
+    GROUPBOX        "232串口控制",IDC_GROUP_232,7,7,229,300
+    LTEXT           "串口:",IDC_STATIC,15,25,30,8
+    COMBOBOX        IDC_COMBO_COM232,50,23,60,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "波特率:",IDC_STATIC,120,25,35,8
+    COMBOBOX        IDC_COMBO_BAUDRATE232,160,23,70,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "数据位:",IDC_STATIC,15,45,30,8
+    COMBOBOX        IDC_COMBO_DATABITS232,50,43,60,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "停止位:",IDC_STATIC,120,45,35,8
+    COMBOBOX        IDC_COMBO_STOPBITS232,160,43,70,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "校验位:",IDC_STATIC,15,65,30,8
+    COMBOBOX        IDC_COMBO_PARITY232,50,63,60,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "打开串口",IDC_BUTTON_OPEN232,160,63,70,18
+    LTEXT           "发送数据:",IDC_STATIC,15,88,40,8
+    EDITTEXT        IDC_EDIT_SEND232,15,100,170,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "发送",IDC_BUTTON_SEND232,190,100,30,14
+    PUSHBUTTON      "清空",IDC_BUTTON_CLEAR232,15,118,40,14
+    CONTROL         "十六进制",IDC_CHECK_HEX232,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,65,120,50,10
+    LTEXT           "接收数据:",IDC_STATIC,15,138,40,8
+    CONTROL         "",IDC_LIST_RECEIVE232,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,15,150,220,145
+    
+    // ==================== 第2列：485串口控制区====================
+    GROUPBOX        "485串口控制",IDC_GROUP_485,249,7,241,300
+    LTEXT           "串口:",IDC_STATIC,263,25,30,8
+    COMBOBOX        IDC_COMBO_COM485,298,23,60,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "波特率:",IDC_STATIC,368,25,35,8
+    COMBOBOX        IDC_COMBO_BAUDRATE485,408,23,70,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "数据位:",IDC_STATIC,263,45,30,8
+    COMBOBOX        IDC_COMBO_DATABITS485,298,43,60,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "停止位:",IDC_STATIC,368,45,35,8
+    COMBOBOX        IDC_COMBO_STOPBITS485,408,43,70,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "校验位:",IDC_STATIC,263,65,30,8
+    COMBOBOX        IDC_COMBO_PARITY485,298,63,60,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "打开串口",IDC_BUTTON_OPEN485,408,63,70,18
+    LTEXT           "发送数据:",IDC_STATIC,263,88,40,8
+    EDITTEXT        IDC_EDIT_SEND485,263,100,170,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "发送",IDC_BUTTON_SEND485,438,100,30,14
+    PUSHBUTTON      "清空",IDC_BUTTON_CLEAR485,263,118,40,14
+    CONTROL         "十六进制",IDC_CHECK_HEX485,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,313,120,50,10
+    LTEXT           "接收数据:",IDC_STATIC,263,138,40,8
+    CONTROL         "",IDC_LIST_RECEIVE485,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,263,149,225,146
+    
+    // ==================== 第3列：I/O接口控制区 ====================
+    GROUPBOX        "I/O接口控制",IDC_GROUP_IO,503,7,179,300
+    PUSHBUTTON      "初始化I/O",IDC_BUTTON_IO_INIT,513,23,80,22
+    LTEXT           "硬件状态: 未连接",IDC_STATIC_IO_HW_STATUS,513,53,220,8
+    LTEXT           "输液开关:",IDC_STATIC,513,73,50,8
+    PUSHBUTTON      "打开",IDC_BUTTON_INFUSION_OPEN,513,85,50,18
+    PUSHBUTTON      "关闭",IDC_BUTTON_INFUSION_CLOSE,570,85,50,18
+    LTEXT           "状态: 关闭",IDC_STATIC_IO5_STATUS,630,88,105,8
+    LTEXT           "消毒液开关:",IDC_STATIC,513,113,60,8
+    PUSHBUTTON      "打开",IDC_BUTTON_DISINFECT_OPEN,513,125,50,18
+    PUSHBUTTON      "关闭",IDC_BUTTON_DISINFECT_CLOSE,570,125,50,18
+    LTEXT           "状态: 关闭",IDC_STATIC_IO4_STATUS,630,128,105,8
+    LTEXT           "激光测距仪:",IDC_STATIC,513,153,60,8
+    PUSHBUTTON      "打开",IDC_BUTTON_LASER_OPEN,513,165,50,18
+    PUSHBUTTON      "关闭",IDC_BUTTON_LASER_CLOSE,570,165,50,18
+    LTEXT           "状态: 关闭",IDC_STATIC_IO6_STATUS,630,168,105,8
+    LTEXT           "传感器状态:",IDC_STATIC,513,193,60,8
+    LTEXT           "消毒液传感器: ○",IDC_STATIC_IO1_STATUS,513,208,220,8
+    LTEXT           "输液传感器: ○",IDC_STATIC_IO2_STATUS,513,223,220,8
+    LTEXT           "激光传感器: ○",IDC_STATIC_IO3_STATUS,513,238,220,8
+    
+    // ==================== 第4列：机械臂控制区====================
+    GROUPBOX        "机械臂控制 (TCP/IP)",IDC_GROUP_ROBOT,683,7,308,300
+    LTEXT           "IP地址:",IDC_STATIC,712,25,35,8
+    EDITTEXT        IDC_EDIT_ROBOT_IP,752,23,120,14,ES_AUTOHSCROLL
+    LTEXT           "端口:",IDC_STATIC,712,45,25,8
+    EDITTEXT        IDC_EDIT_ROBOT_PORT,752,43,60,14,ES_AUTOHSCROLL | ES_NUMBER
+    PUSHBUTTON      "连接",IDC_BUTTON_CONNECT_ROBOT,822,43,50,14
+    PUSHBUTTON      "断开",IDC_BUTTON_DISCONNECT_ROBOT,882,23,50,14
+    PUSHBUTTON      "初始化",IDC_BUTTON_INIT_ROBOT,882,43,50,14
+    PUSHBUTTON      "归零",IDC_BUTTON_HOME_ROBOT,942,23,50,14
+    PUSHBUTTON      "急停",IDC_BUTTON_ESTOP_ROBOT,942,43,50,34
+    LTEXT           "状态: ○ 未连接",IDC_STATIC_ROBOT_STATUS,712,65,100,8
+    
+    // ★ 当前位置（只读，新增Theta显示）
+    GROUPBOX        "当前位置（只读）",IDC_STATIC,712,83,242,75
+    LTEXT           "X:",IDC_STATIC,722,103,15,8
+    EDITTEXT        IDC_EDIT_X_POS,742,101,60,14,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "mm",IDC_STATIC,807,103,15,8
+    LTEXT           "Y:",IDC_STATIC,722,123,15,8
+    EDITTEXT        IDC_EDIT_Y_POS,742,121,60,14,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "mm",IDC_STATIC,807,123,15,8
+    LTEXT           "Z:",IDC_STATIC,837,103,15,8
+    EDITTEXT        IDC_EDIT_Z_POS,857,101,60,14,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "mm",IDC_STATIC,922,103,15,8
+    LTEXT           "Theta:",IDC_STATIC,837,123,30,8
+    EDITTEXT        IDC_EDIT_THETA_POS,872,121,45,14,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "°",IDC_STATIC,922,123,10,8
+    PUSHBUTTON      "刷新",IDC_BUTTON_REFRESH_POS,722,138,225,14
+    
+    // ★ 目标位置（可编辑，新增Theta输入）
+    GROUPBOX        "目标位置（输入目标坐标和姿态角）",IDC_STATIC,712,163,242,95
+    LTEXT           "X:",IDC_STATIC,722,183,15,8
+    EDITTEXT        IDC_EDIT_TARGET_X,742,181,60,14,ES_AUTOHSCROLL
+    LTEXT           "mm",IDC_STATIC,807,183,15,8
+    LTEXT           "Y:",IDC_STATIC,722,203,15,8
+    EDITTEXT        IDC_EDIT_TARGET_Y,742,201,60,14,ES_AUTOHSCROLL
+    LTEXT           "mm",IDC_STATIC,807,203,15,8
+    LTEXT           "Z:",IDC_STATIC,837,183,15,8
+    EDITTEXT        IDC_EDIT_TARGET_Z,857,181,60,14,ES_AUTOHSCROLL
+    LTEXT           "mm",IDC_STATIC,922,183,15,8
+    LTEXT           "Theta:",IDC_STATIC,837,203,30,8
+    EDITTEXT        IDC_EDIT_TARGET_THETA,872,201,45,14,ES_AUTOHSCROLL
+    LTEXT           "°",IDC_STATIC,922,203,10,8
+    LTEXT           "速度:",IDC_STATIC,722,223,30,8
+    CONTROL         "",IDC_SLIDER_SPEED,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,757,221,130,15
+    LTEXT           "50%",IDC_STATIC_SPEED,892,223,30,8
+    PUSHBUTTON      "→ 移动到目标位置",IDC_BUTTON_START_ROBOT,722,238,225,16
+    
+    // ==================== 流程控制区 ====================
+    GROUPBOX        "流程控制",IDC_GROUP_PROCEDURE,7,315,1006,70
+    PUSHBUTTON      "⚙ 打开流程控制面板",IDC_BUTTON_OPEN_PROCEDURE,350,335,320,40
+    LTEXT           "点击上方按钮打开独立的流程控制界面",IDC_STATIC,25,340,280,10
+    LTEXT           "• 7步完整流程执行  • 步骤监控与状态显示",IDC_STATIC,25,352,280,10
+    LTEXT           "• 流程参数配置  • 单步调试功能  • 操作日志记录",IDC_STATIC,25,364,280,10
+    
+    // ==================== 系统日志区（放大版）====================
+    GROUPBOX        "系统日志",IDC_GROUP_LOG,7,393,1006,300
+    CONTROL         "",IDC_LIST_LOG,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,15,411,990,250
+    PUSHBUTTON      "导出日志",IDC_BUTTON_EXPORT_LOG,860,670,70,18
+    PUSHBUTTON      "清空日志",IDC_BUTTON_CLEAR_LOG,940,670,70,18
+    
+    // ==================== 底部状态栏 ====================
+    LTEXT           "● 机械臂: 未连接 | ● 232: 未连接 | ● 485: 未连接 | ● I/O: 未初始化",IDC_STATIC,15,700,600,8
+    LTEXT           "系统时间: 00:00:00",IDC_STATIC,920,700,90,8
+    
+    // ==================== 隐藏的兼容性控件 ====================
+    LTEXT           "",IDC_STATIC_ROBOT_CONNECTION,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_STOP_ROBOT,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_CHECK_AUTO_REFRESH,-100,-100,1,1,NOT WS_VISIBLE | NOT WS_TABSTOP
+    PUSHBUTTON      "",IDC_RADIO_STEP_01,-100,-100,1,1,NOT WS_VISIBLE | NOT WS_TABSTOP
+    PUSHBUTTON      "",IDC_RADIO_STEP_1,-100,-100,1,1,NOT WS_VISIBLE | NOT WS_TABSTOP
+    PUSHBUTTON      "",IDC_RADIO_STEP_10,-100,-100,1,1,NOT WS_VISIBLE | NOT WS_TABSTOP
+    PUSHBUTTON      "",IDC_BUTTON_X_PLUS,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_X_MINUS,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_Y_PLUS,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_Y_MINUS,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_Z_PLUS,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_Z_MINUS,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_SAVE_POS1,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_SAVE_POS2,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_SAVE_POS3,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_POS1,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_POS2,-100,-100,1,1,NOT WS_VISIBLE
+    PUSHBUTTON      "",IDC_BUTTON_POS3,-100,-100,1,1,NOT WS_VISIBLE
+    LTEXT           "",IDC_STATIC_POS1_INFO,-100,-100,1,1,NOT WS_VISIBLE
+    LTEXT           "",IDC_STATIC_POS2_INFO,-100,-100,1,1,NOT WS_VISIBLE
+    LTEXT           "",IDC_STATIC_POS3_INFO,-100,-100,1,1,NOT WS_VISIBLE
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 163
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 55
+    END
+
+    IDD_PROCEDURE_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 163
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 55
+    END
+
+    IDD_MFCAPPLICATION1_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        TOPMARGIN, 7
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_MFCAPPLICATION1_DIALOG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_ABOUTBOX            "关于 MFCApplication1(&A)..."
+END
+
+#endif    // 中文(简体，中国) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

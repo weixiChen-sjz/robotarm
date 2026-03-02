@@ -1,0 +1,50 @@
+﻿#pragma once
+#include <Windows.h>
+#include "EVOC_BPI_DLL.h"
+
+// GPIO控制器类 - 完全按照原程序方式实现
+class CIOController
+{
+public:
+    CIOController();
+    ~CIOController();
+
+    // GPIO初始化（对应原程序的GPIO_Init）
+    BOOL Initialize();
+    
+    // GPIO读写（对应原程序的GPIO_ReadWrite）
+    void ProcessGPIO();
+    
+    // 关闭GPIO
+    void Shutdown();
+    
+    // 检查是否已初始化
+    BOOL IsOpen() const { return m_GPIOOpen; }
+    
+    // 获取当前GPIO输入电平
+    BYTE GetGPIOLevels() const { return m_GPIOLevels; }
+    
+    // 业务层封装（为了兼容界面）
+    BOOL OpenInfusionSwitch();      // 打开输液开关（设置PIN 5 = 1）
+    BOOL CloseInfusionSwitch();     // 关闭输液开关（设置PIN 5 = 0）
+    BOOL OpenDisinfectSwitch();     // 打开消毒液开关（设置PIN 6 = 1）
+    BOOL CloseDisinfectSwitch();    // 关闭消毒液开关（设置PIN 6 = 0）
+    
+    BOOL GetInfusionSensorState();  // 获取输液传感器状态（读取PIN 1）
+    BOOL GetDisinfectSensorState(); // 获取消毒液传感器状态（读取PIN 2）
+    
+    // 获取硬件状态文本
+    CString GetHardwareStateText() const;
+    BOOL IsInitialized() const { return m_GPIOOpen; }
+    BOOL IsHardwareConnected() const { return m_GPIOOpen; }
+
+private:
+    // 完全按照原程序的变量定义
+    BOOL m_GPIOOpen;              // GPIO是否打开成功
+    BYTE m_GPIOLevels;            // 通过IO输入形成的标志变量
+    BYTE m_GPIOAPreLevels;        // 保存上一次输入的变量
+    
+    // 输出控制状态
+    BOOL m_bInfusionSwitchOpen;   // 输液开关状态
+    BOOL m_bDisinfectSwitchOpen;  // 消毒液开关状态
+};
